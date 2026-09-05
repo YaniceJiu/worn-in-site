@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Worn-In</title>
+<link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- 放映台：16:9 定格画面；竖屏下变成“取景窗”跟着动作平移 -->
+  <div id="frame" class="frame">
+    <div id="pan" class="pan">
+      <img id="fA" class="flayer" alt="">
+      <img id="fB" class="flayer" alt="">
+    </div>
+    <div id="shine" class="shine"></div>
+  </div>
+
+  <!-- 进度/辅助 -->
+  <div id="hud" class="hud">
+    <button id="soundBtn" class="hud-btn">🔊</button>
+    <button id="skipBtn" class="hud-btn skip">跳过</button>
+  </div>
+
+  <!-- 播完后的落版 -->
+  <div id="finish" class="finish hidden">
+    <div class="finish-card">
+      <p class="fk">Worn-In</p>
+      <p class="ft">【文案占位】它已经钻进柜子，为你悄悄调一杯香。</p>
+      <div class="fbtns">
+        <button id="btnUpload" class="fbtn main">【文案占位】放入衣物</button>
+        <button id="btnReplay" class="fbtn ghost">再看一遍</button>
+      </div>
+      <p class="fn">按钮文案后续由你提供，我先占位。</p>
+    </div>
+  </div>
+
+  <!-- 示例结果（占位：点击“放入衣物”或直接查看） -->
+  <div id="resultCard" class="result-card hidden">
+    <div class="result-paper">
+      <p class="result-title">【文案占位】这杯，是它的味道</p>
+      <ul class="r-features">
+        <li><i>款式</i><b id="rStyle"></b></li>
+        <li><i>印花</i><b id="rPrint"></b></li>
+        <li><i>材质</i><b id="rMat"></b></li>
+        <li><i>颜色</i><b id="rCol"></b></li>
+      </ul>
+      <div class="r-bottles">
+        <div class="rb"><span>前调</span><b id="p1"></b></div>
+        <div class="rb"><span>中调</span><b id="p2"></b></div>
+        <div class="rb"><span>后调</span><b id="p3"></b></div>
+      </div>
+      <div class="r-actions">
+        <button id="rBack" class="fbtn ghost">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*" hidden>
+</div>
+
+<script src="js/main.js?v=1"></script>
+</body>
+</html>

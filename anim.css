@@ -1,0 +1,106 @@
+/* Worn-In · iPad 竖屏定格动画 v1 */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#17120c;font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;color:#fff}
+.off{opacity:0!important;pointer-events:none!important}
+#app{position:fixed;inset:0;overflow:hidden;
+  width:min(100vw, calc(100dvh*761/1080));
+  left:50%;transform:translateX(-50%)}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* 门开前的 PPT 原片（校准到衣柜预设位） */
+.film{position:absolute;overflow:hidden;z-index:8;transition:opacity .4s;box-shadow:0 0 40px rgba(0,0,0,.25)}
+.film .flayer{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;opacity:0;transition:opacity .08s linear}
+.film .flayer.on{opacity:1}
+
+/* 63帧进度条 */
+#scrub{position:fixed;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:center;gap:8px;
+  padding:6px 10px calc(6px + env(safe-area-inset-bottom));background:rgba(10,8,5,.55);backdrop-filter:blur(3px)}
+#playBtn{flex:0 0 34px;height:30px;border:none;border-radius:8px;background:#c9a05c;color:#2a2116;font-size:14px;cursor:pointer}
+#ticks{flex:1;display:flex;gap:2px;height:22px;align-items:stretch}
+#ticks button{flex:1;border:none;padding:0;background:rgba(255,255,255,.22);border-radius:2px;cursor:pointer}
+#ticks button:hover{background:rgba(255,255,255,.5)}
+#ticks button.cur{background:#c9a05c}
+#fnum{color:#fff;font-size:12px;flex:0 0 auto;min-width:52px;text-align:center}
+
+/* 逐帧查看 */
+#viewer{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center}
+#viewer img{max-width:96%;max-height:80%;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.vnav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:60px;border:none;border-radius:12px;
+  background:rgba(255,255,255,.14);color:#fff;font-size:26px;cursor:pointer}
+#vPrev{left:10px} #vNext{right:10px}
+#vInfo{position:absolute;bottom:74px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:14px}
+#vNum{color:#fff;font-size:15px;background:rgba(0,0,0,.5);padding:5px 12px;border-radius:14px}
+#vPlay{border:none;border-radius:20px;background:#c9a05c;color:#2a2116;padding:7px 16px;cursor:pointer;font-size:14px}
+
+.prop{position:absolute;transition:opacity .4s}
+/* 衣柜 / 开柜：同一左下大件位（参考：左9.6% 宽50%） */
+#wardrobeBox,#cabinetBox{left:9.6%;width:50%}
+#wardrobe{width:100%;display:block;filter:drop-shadow(0 10px 12px rgba(40,20,5,.35))}
+#wardrobeBox{top:33.8%}
+#cabinetBox{top:39.6%}
+#cabinet{width:100%;display:block}
+#machine{position:absolute;left:22%;top:24%;width:56%;filter:drop-shadow(0 6px 8px rgba(0,0,0,.2))}
+/* 抖动 */
+@keyframes shake{10%{transform:translateX(-2.5%) rotate(-3deg)}25%{transform:translateX(2.5%) rotate(3deg)}
+ 40%{transform:translateX(-2%) rotate(-2.2deg)}55%{transform:translateX(2%) rotate(2deg)}70%{transform:translateX(-1.2%) rotate(-1.4deg)}85%{transform:translateX(.8%) rotate(.8deg)}100%{transform:none}}
+#wardrobeBox.shake{animation:shake .5s}
+/* 门缝白光/开柜闪光 */
+.spark{position:absolute;left:22%;top:42%;width:26%;height:20%;z-index:8;
+  background:radial-gradient(50% 60% at 50% 50%, #fff, rgba(255,244,200,.6) 45%, transparent 75%);
+  filter:blur(1px);transition:opacity .15s}
+
+/* 镜框/画框（参考：右上 ~20%） */
+.mirror{left:71.5%;top:31%;width:22%;background:none;border:none;cursor:pointer;z-index:6}
+#mirror{width:100%;display:block;filter:drop-shadow(0 8px 8px rgba(30,15,5,.35))}
+.mirror-fill{position:absolute;left:11%;top:12%;width:78%;height:72%;overflow:hidden;border-radius:6px;
+  background:radial-gradient(circle at 60% 40%, #dff3ff, #aad6ee 70%);opacity:.35;
+  display:flex;align-items:center;justify-content:center}
+.mirror-fill img{max-width:100%;max-height:100%;object-fit:cover}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.mirror.bob{animation:bob 2s ease-in-out infinite}
+@keyframes blueWash{0%{background:#dff3ff;opacity:.15}40%{background:#bfe8ff;opacity:.9}100%{background:#dff3ff;opacity:.5}}
+.mirror.wash .mirror-fill{animation:blueWash .9s ease}
+.mirror-tip{position:absolute;left:50%;top:102%;transform:translateX(-50%);width:140%;text-align:center;
+  font-size:13px;letter-spacing:.14em;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);transition:opacity .3s}
+
+/* 白布/烟 */
+.cloth{position:absolute;z-index:9;width:0;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18));object-fit:contain}
+.cloth.on{animation:clothFlow 2s ease forwards}
+@keyframes clothFlow{
+  0%{left:36%;top:52%;width:4%;opacity:0;transform:rotate(-8deg)}
+  12%{opacity:.95}
+  45%{left:44%;top:40%;width:14%;transform:rotate(10deg) scale(1.2)}
+  75%{left:60%;top:30%;width:12%;transform:rotate(-6deg)}
+  100%{left:72%;top:34%;width:10%;opacity:0;transform:rotate(0)}
+}
+/* 缎带甩动 */
+.ribbon{position:absolute;z-index:10;width:0;object-fit:contain}
+.ribbon.on{animation:ribbonSweep 1.6s ease forwards}
+@keyframes ribbonSweep{
+  0%{left:70%;top:44%;width:2%;opacity:0;transform:rotate(-30deg)}
+  10%{opacity:1}
+  45%{left:48%;top:58%;width:26%;transform:rotate(-70deg)}
+  100%{left:60%;top:70%;width:18%;opacity:0;transform:rotate(20deg)}
+}
+
+/* 底部三瓶 */
+#bottles{position:absolute;left:0;right:0;bottom:7%;display:flex;justify-content:center;gap:14%;z-index:11;transition:opacity .4s}
+.slot{display:flex;flex-direction:column;align-items:center;opacity:0;transform:translateY(14px)}
+.slot.on{opacity:1;transform:none;transition:all .45s cubic-bezier(.2,.9,.3,1.2)}
+.slot img{width:clamp(46px,13vw,78px);height:auto;filter:drop-shadow(0 5px 5px rgba(0,0,0,.3))}
+.slot span{margin-top:5px;font-size:11px;letter-spacing:.3em;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+
+#soundBtn{position:fixed;top:max(14px,env(safe-area-inset-top));right:12px;z-index:40;width:40px;height:40px;
+  border-radius:50%;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.3);color:#fff;font-size:16px}
+#tapArea{position:absolute;inset:0;z-index:35;background:transparent;border:none;cursor:pointer}
+
+/* 结束落版 */
+#finish{position:fixed;inset:0;z-index:45;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.4);transition:opacity .4s;padding:20px}
+#finish .card{width:min(84vw,360px);text-align:center;background:rgba(0,0,0,.35);border-radius:20px;padding:26px 20px;backdrop-filter:blur(4px)}
+#finish .k{font-size:13px;letter-spacing:.5em;color:#d9b37a;margin-bottom:10px}
+#finish .t{font-size:15px;line-height:1.8;margin-bottom:18px;letter-spacing:.05em}
+#finish .b{display:block;width:100%;margin-top:10px;padding:13px 0;border:none;border-radius:30px;font-size:15px;letter-spacing:.2em;cursor:pointer}
+#finish .main{background:#c9a05c;color:#2a2116}
+#finish .ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.75)}
+#finish .n{margin-top:14px;font-size:11px;color:rgba(255,255,255,.55)}

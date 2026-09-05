@@ -1,0 +1,65 @@
+/* Worn-In · 定格放映器 */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:#17130e;overflow:hidden;font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;color:#fff}
+.hidden{display:none!important}
+
+#app{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+
+/* ---- 16:9 放映台（横屏：居中） ---- */
+.frame{
+  position:relative;width:min(100vw,177.78vh);aspect-ratio:16/9;
+  background:#000;
+  box-shadow:0 10px 60px rgba(0,0,0,.6);
+  overflow:hidden;cursor:pointer;
+}
+.flayer{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;opacity:0;transition:opacity .1s linear}
+.flayer.on{opacity:1}
+/* 竖屏：整屏取景窗，.pan 随动作平移 */
+#app.isPortrait .frame{width:100vw;height:100dvh;border-radius:0;box-shadow:none}
+#app.isPortrait .pan{position:absolute;top:0;left:0;height:100%;display:flex;will-change:transform;
+  transform:translateX(0)}
+#app.isPortrait .flayer{position:relative;flex:0 0 auto;height:100%;width:auto;object-fit:contain}
+.shine{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 50% 42%, transparent 55%, rgba(20,10,0,.22));opacity:.55}
+
+/* ---- hud ---- */
+.hud{position:fixed;top:max(14px,env(safe-area-inset-top));right:12px;display:flex;gap:8px;z-index:20}
+.hud-btn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.5);
+  background:rgba(0,0,0,.35);color:#fff;font-size:16px;cursor:pointer;backdrop-filter:blur(3px)}
+.hud-btn.skip{width:auto;padding:0 14px;border-radius:20px;font-size:13px;letter-spacing:.1em}
+
+/* ---- finish ---- */
+.finish{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.35);padding:20px}
+.finish-card{width:min(86vw,400px);text-align:center;color:var(--c,inherit)}
+.fk{font-size:13px;letter-spacing:.5em;color:#d9b37a;margin-bottom:12px}
+.ft{font-size:16px;line-height:1.8;color:#fff;letter-spacing:.06em;background:rgba(0,0,0,.42);
+  padding:18px 20px;border-radius:18px;backdrop-filter:blur(6px)}
+.fbtns{display:flex;flex-direction:column;gap:12px;margin-top:20px}
+.fbtn{border:none;font-family:inherit;cursor:pointer;font-size:15px;letter-spacing:.2em;
+  padding:14px 0;border-radius:30px}
+.fbtn.main{background:#c9a05c;color:#2a2116}
+.fbtn.ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.75)}
+.fn{margin-top:16px;font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.08em}
+
+/* ---- 示例结果卡 ---- */
+.result-card{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.5);padding:18px}
+.result-paper{width:min(90vw,420px);background:#f6edda;color:#3a3127;border-radius:20px;
+  padding:24px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.result-title{text-align:center;font-size:17px;letter-spacing:.1em;margin-bottom:16px}
+.r-features{list-style:none}
+.r-features li{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed rgba(120,90,40,.3);font-size:14px}
+.r-features i{flex:0 0 44px;text-align:center;font-style:normal;background:#6b4a2f;color:#fff;
+  border-radius:10px;padding:4px 0;font-size:12px;letter-spacing:.1em}
+.r-bottles{display:flex;justify-content:space-between;margin-top:16px}
+.rb{text-align:center;flex:1}
+.rb span{display:block;font-size:11px;color:#9a5a2e;letter-spacing:.3em}
+.rb b{display:block;font-size:15px;margin-top:4px}
+.r-actions{margin-top:18px}
+
+/* 加载遮罩 */
+#boot{position:fixed;inset:0;background:#17130e;z-index:60;display:flex;align-items:center;justify-content:center}
+#boot i{width:44px;height:44px;border-radius:50%;border:4px solid rgba(255,255,255,.15);border-top-color:#c9a05c;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}

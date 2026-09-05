@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Worn-In</title>
+<link rel="stylesheet" href="anim.css?v=2">
+</head>
+<body>
+<div id="app">
+  <img id="bg" class="bg" src="assets/roomB-bg.png" alt="">
+
+  <!-- 衣柜（闭合） -->
+  <div id="wardrobeBox" class="prop">
+    <img id="wardrobe" src="assets/wardrobe.png" alt="衣柜">
+  </div>
+  <!-- 柜内机器（门开后露出：开柜+调香机） -->
+  <div id="cabinetBox" class="prop off">
+    <img id="cabinet" src="assets/cabinet-open.png" alt="开柜">
+    <img id="machine" src="assets/apparatus.png" alt="调香机">
+  </div>
+  <div id="spark" class="spark off"></div>
+
+  <!-- 右上镜框/画框（参考尺寸） -->
+  <button id="mirrorBtn" class="prop mirror">
+    <img id="mirror" src="assets/mirror.png" alt="镜框">
+    <span id="mirrorFill" class="mirror-fill"></span>
+    <span id="mirrorTip" class="mirror-tip off">点我放入衣物</span>
+  </button>
+
+  <!-- 从柜门钻出的白布 -->
+  <img id="cloth" class="cloth off" alt="">
+  <!-- 缎带 -->
+  <img id="ribbon" class="ribbon off" src="assets/ribbon-curl.png" alt="缎带">
+
+  <!-- 底部三瓶 -->
+  <div id="bottles" class="off">
+    <div class="slot"><img alt=""><span>前调</span></div>
+    <div class="slot"><img alt=""><span>中调</span></div>
+    <div class="slot"><img alt=""><span>后调</span></div>
+  </div>
+
+  <button id="soundBtn">🔊</button>
+
+  <!-- 门开前的 PPT 原片（校准到衣柜预设位） -->
+  <div id="film" class="film off">
+    <img id="fA" class="flayer" alt="">
+    <img id="fB" class="flayer" alt="">
+  </div>
+
+  <!-- 63帧逐帧检查器 -->
+  <div id="scrub">
+    <button id="playBtn" title="播放">▶</button>
+    <div id="ticks"></div>
+    <span id="fnum">1/63</span>
+  </div>
+
+  <div id="viewer" class="off">
+    <img id="fv" alt="">
+    <button id="vPrev" class="vnav">‹</button>
+    <button id="vNext" class="vnav">›</button>
+    <div id="vInfo"><span id="vNum">1/63</span><button id="vPlay">▶ 从这播放</button></div>
+  </div>
+
+  <button id="tapArea" aria-label="跳过"></button>
+
+  <div id="finish" class="off">
+    <div class="card">
+      <p class="k">Worn-In</p>
+      <p class="t">【文案占位】它已经钻进柜子，为你悄悄调一杯香。</p>
+      <button id="btnUp" class="b main">【文案占位】放入衣物</button>
+      <button id="btnRe" class="b ghost">再看一遍</button>
+      <p class="n">按钮文案后续由你提供。</p>
+    </div>
+  </div>
+
+  <input type="file" id="file" accept="image/*" hidden>
+</div>
+<script src="anim.js?v=3"></script>
+</body>
+</html>
