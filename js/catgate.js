@@ -13,6 +13,7 @@ const cv = document.getElementById('catCv');
 const cctx = cv.getContext('2d');
 const touchEl = document.getElementById('catTouch');
 const perfumeEl = document.getElementById('catPerfume');
+const statusEl = document.getElementById('catStatus');
 
 const MIRROR_X = true;      // 前置摄像头镜像
 const CLOSE_AREA = 0.13;
@@ -27,6 +28,7 @@ let eyeOpen = 1, blinking = false, blinkStart = 0, blinkDur = 180, nextBlink = 0
 let isClose = false, excite = 0;
 let happy = false, happyUntil = 0, unlocking = false;
 let faceDetector = null, camOk = false;
+let lastFace = null;
 
 const video = document.createElement('video');
 video.muted = true; video.playsInline = true; video.autoplay = true;
@@ -316,8 +318,10 @@ function processDetections(res){
     targetX = clamp((MIRROR_X ? -1 : 1) * (n.x - 0.5) * 2.6, -1, 1);
     targetY = clamp((n.y - 0.5) * 2.6, -1, 1);
     isClose = n.area >= CLOSE_AREA ? true : (n.area <= FAR_AREA ? false : isClose);
+    lastFace = { x: n.x, y: n.y, area: n.area };
   } else {
     isClose = false;
+    lastFace = null;
   }
 }
 
@@ -336,9 +340,12 @@ async function initCam(){
 
 async function initDetector(){
   try{
-    const vision = await FilesetResolver.forVisionTasks(location.origin + '/assets/vendor');
+    // 用 import.meta.url 相对定位，避免 GitHub Pages 子路径(/worn-in-site/)下 404
+    const VENDOR_BASE = new URL('../assets/vendor', import.meta.url).toString();
+    const MODEL_URL = new URL('../assets/vendor/blaze_face_short_range.tflite', import.meta.url).toString();
+    const vision = await FilesetResolver.forVisionTasks(VENDOR_BASE);
     const opts = (delegate) => ({
-      baseOptions: { modelAssetPath: location.origin + '/assets/vendor/blaze_face_short_range.tflite', delegate },
+      baseOptions: { modelAssetPath: MODEL_URL, delegate },
       runningMode: 'VIDEO',
     });
     try{ faceDetector = await FaceDetector.createFromOptions(vision, opts('GPU')); }
@@ -348,6 +355,18 @@ async function initDetector(){
 }
 
 /* ---------- 主循环 ---------- */
+function updateStatus(){
+  if(!statusEl) return;
+  let txt;
+  if(!camOk) txt = '摄像头未开启';
+  else if(!faceDetector) txt = '模型加载中…';
+  else if(lastFace) txt = '👀 检测到人';
+  else txt = '摄像头已开 · 未检测到人';
+  if(statusEl.textContent !== txt) statusEl.textContent = txt;
+  statusEl.classList.add('show');
+  window.__gate = { camOk, det: !!faceDetector, face: lastFace, lookX: +lookX.toFixed(2), lookY: +lookY.toFixed(2) };
+}
+
 function loop(t){
   requestAnimationFrame(loop);
 
@@ -386,6 +405,7 @@ function loop(t){
   touchEl.classList.toggle('show', !happy && !unlocking && isClose);
   perfumeEl.classList.toggle('show', happy);
 
+  updateStatus();
   render(t);
 }
 

@@ -73,6 +73,13 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
   white-space:nowrap; max-width:92vw; text-align:center;
 }
 #catPerfume.show{opacity:1}
+#catStatus{
+  position:absolute; top:max(10px, env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+  color:#dfe8c8; font-size:12px; padding:6px 12px; border-radius:999px;
+  background:rgba(0,0,0,.45); opacity:0; transition:opacity .3s; z-index:204;
+  white-space:nowrap; pointer-events:none;
+}
+#catStatus.show{opacity:1}
 #aiErr{color:#ff9f8a;margin-top:12px;font-size:14px}
 #aiErr button{display:block;margin:12px auto 0;padding:8px 18px;border:none;border-radius:16px;background:#c9a05c;color:#231a10;cursor:pointer}
 
