@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Worn-In 旧衣·新香</title>
+<link rel="stylesheet" href="play.css?v=3">
+</head>
+<body>
+<div id="stageBox">
+  <canvas id="cv"></canvas>
+  <div id="fx"></div>            <!-- 飘句/香料标签层 -->
+  <div id="hud"></div>           <!-- 提示文字 -->
+  <div id="bottomBar" class="hidden"></div>
+  <div id="toast"></div>
+</div>
+
+<!-- 拍照浮层 -->
+<div id="camOverlay" class="overlay hidden">
+  <div class="camHead">
+    <button id="camClose">✕</button>
+    <span id="camTitle">把你的衣服放进镜子里</span>
+  </div>
+  <div id="camView">
+    <video id="video" playsinline muted></video>
+    <canvas id="photoShot" class="hidden"></canvas>
+    <div id="personGuide"></div>
+    <div id="countdown" class="hidden"><span id="countNum">3</span></div>
+  </div>
+  <div class="camBtns">
+    <button id="btnShoot" class="big">📷 拍照</button>
+    <button id="btnRetake" class="hidden">重拍</button>
+    <button id="btnOk" class="hidden">🆗 就用这张</button>
+    <button id="btnPickFile">🖼 从相册选择</button>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" hidden>
+</div>
+
+<!-- AI 加载遮罩 -->
+<div id="aiLoading" class="overlay hidden">
+  <div class="aiCard">
+    <div class="spinner"></div>
+    <div id="aiText">AI 正在为你的衣服调香…</div>
+    <div id="aiErr" class="hidden"></div>
+  </div>
+</div>
+
+<!-- Key 设置 -->
+<div id="keyPanel" class="hidden">
+  <p>OpenAI API Key（只存本机，不写入网站代码）</p>
+  <input id="keyInput" type="password" placeholder="sk-...">
+  <button id="keySave">保存</button>
+  <span id="keyHint" class="hidden">✓ 已保存</span>
+</div>
+
+<script src="js/apikey.js"></script>
+<script src="js/copykit.js?v=2"></script>
+<script src="js/play.js?v=17"></script>
+<!-- 临时 AI 调试小框：之后删掉这一行即可整体移除 -->
+<script src="js/debugpanel.js"></script>
+</body>
+</html>

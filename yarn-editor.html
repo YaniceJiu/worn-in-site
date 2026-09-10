@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>毛线球裁剪编辑器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#1d1a16;color:#eee;height:100vh;overflow:hidden}
+#wrap{display:flex;height:100vh}
+#stage{flex:1;display:flex;align-items:center;justify-content:center;background:#15120e}
+#cv{max-width:100%;max-height:100%;background:#000}
+#panel{width:360px;background:#23201b;border-left:1px solid #000;overflow:auto;padding:12px}
+h3{color:#e3c48f;margin-bottom:4px}
+.tip{color:#9a8c78;font-size:12px;line-height:1.6;margin:6px 0 10px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.tools button{padding:7px 12px;border:none;border-radius:14px;background:#c9a05c;color:#231a10;cursor:pointer;font-size:13px;font-weight:700}
+.tools label{font-size:12px;color:#cdc2b2}
+.tools input[type=range]{width:110px}
+.layer{background:#2c2822;border:1px solid #000;border-radius:10px;margin-bottom:8px;padding:8px;cursor:pointer}
+.layer.sel{border-color:#5b8def;box-shadow:0 0 0 1px #5b8def}
+.lhead{display:flex;align-items:center;gap:6px}
+.lhead b{flex:1;font-size:13px}
+.lrow{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:12px;color:#cdc2b2}
+.lrow label{width:46px;flex:0 0 46px}
+.lrow input[type=range]{flex:1;min-width:0}
+.lrow input[type=number]{width:58px;background:#14110d;border:1px solid #4a4134;color:#e3c48f;border-radius:4px;padding:2px 4px;text-align:center}
+.giftitle{font-size:11px;color:#d9b37a;margin-top:6px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><canvas id="cv"></canvas></div>
+  <div id="panel">
+    <h3>毛线球裁剪编辑器</h3>
+    <p class="tip">四边裁剪、位置固定：裁左/右/上/下 分别剪掉对应的一边，剪掉后其余部分原地不动。调完点「下载配置 JSON」覆盖 wornin_project.json。</p>
+    <div class="tools">
+      <button id="btnExport">下载配置 JSON</button>
+      <label>帧</label><input type="range" id="frame" min="0" max="529" value="300"><span id="frameVal">300</span>
+    </div>
+    <div id="layers"></div>
+  </div>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d');
+let CFG=null, SEG4=null, yarns=[], imgs={}, frameImg={}, meta={frames:530};
+let sel=0, curFrame=300;
+const EDIT_COLORS=['#e07a5f','#81b29a','#5b8def'];   // 仅编辑用，区分三个球
+const TINT={};
+
+async function loadImg(u){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=u;});}
+function frameURL(f){return 'assets/gifs/yarn_liquid/frames/f'+String(f).padStart(4,'0')+'.png';}
+function getFrame(f){if(!frameImg[f]){frameImg[f]=new Image();frameImg[f].onload=()=>{};frameImg[f].src=frameURL(f);}return frameImg[f];}
+function tintCanvas(im,hex){
+  const key=hex+'_'+im.src; if(TINT[key]) return TINT[key];
+  if(!im.complete||!im.naturalWidth){TINT[key]=im;return im;}
+  const t=/^#?([0-9a-f]{6})$/i.exec(hex); if(!t){TINT[key]=im;return im;}
+  const R=parseInt(t[1].slice(0,2),16),G=parseInt(t[1].slice(2,4),16),B=parseInt(t[1].slice(4,6),16);
+  const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+  const x=c.getContext('2d');x.drawImage(im,0,0);
+  const id=x.getImageData(0,0,c.width,c.height),d=id.data;
+  for(let i=0;i<d.length;i+=4){
+    const rr=d[i],gg=d[i+1],bb=d[i+2],a=d[i+3]; if(!a)continue;
+    const mx=Math.max(rr,gg,bb),mn=Math.min(rr,gg,bb);
+    const sat=mx===0?0:(mx-mn)/mx, lum=0.299*rr+0.587*gg+0.114*bb;
+    if(lum>150&&sat<0.45){d[i]=R;d[i+1]=G;d[i+2]=B;}
+  }
+  x.putImageData(id,0,0); TINT[key]=c; return c;
+}
+function draw(){
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  if(imgs[SEG4.bg]) ctx.drawImage(imgs[SEG4.bg],0,0,W,H); else {ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);}
+  const order=yarns.map((L,i)=>({L,i}));
+  order.sort((a,b)=> (a.i===sel?1:0)-(b.i===sel?1:0));   // 选中层最后画
+  const onlySel=!!yarns[sel].only;
+  for(const {L,i} of order){
+    if(L.vis===false) continue;
+    if(onlySel && i!==sel) continue;
+    const im=getFrame(curFrame);
+    if(!im.complete||!im.naturalWidth) continue;
+    const fw=im.naturalWidth,fh=im.naturalHeight;
+    const cx=L.cutL||0, cy=L.cutT||0;
+    const cw=Math.max(1, 100-(L.cutL||0)-(L.cutR||0));
+    const ch=Math.max(1, 100-(L.cutT||0)-(L.cutB||0));
+    const sx=cx/100*fw, sy=cy/100*fh, sw=cw/100*fw, sh=ch/100*fh;
+    const dx=L.x/100*W, dy=L.y/100*H, dw=L.w/100*W;
+    const dh=dw*fh/fw;
+    const ddx=dx+cx/100*dw, ddy=dy+cy/100*dh, ddw=cw/100*dw, ddh=ch/100*dh;
+    ctx.drawImage(tintCanvas(im,EDIT_COLORS[i%3]),sx,sy,sw,sh,ddx,ddy,ddw,ddh);
+    if(i===sel){ ctx.strokeStyle='#5b8def'; ctx.lineWidth=3; ctx.strokeRect(dx,dy,dw,dh); }
+  }
+}
+function sliderRow(label,val,min,max,step,oninput){
+  const d=document.createElement('div');d.className='lrow';const st=step||1;
+  d.innerHTML=`<label>${label}</label><input type="range" min="${min}" max="${max}" step="${st}" value="${val}"><input type="number" min="${min}" max="${max}" step="${st}" value="${val}">`;
+  const rg=d.querySelector('input[type=range]'),nm=d.querySelector('input[type=number]');
+  const clamp=v=>isNaN(v)?min:Math.min(max,Math.max(min,v));
+  rg.oninput=()=>{nm.value=rg.value;oninput(clamp(parseFloat(rg.value)));draw();};
+  nm.onchange=()=>{const v=clamp(parseFloat(nm.value));nm.value=v;rg.value=v;oninput(v);draw();};
+  nm.oninput=()=>{const v=parseFloat(nm.value);if(!isNaN(v)){rg.value=clamp(v);oninput(clamp(v));draw();}};
+  return d;
+}
+function buildPanel(){
+  const box=$('layers');box.innerHTML='';
+  yarns.forEach((L,i)=>{
+    const el=document.createElement('div');el.className='layer'+(i===sel?' sel':'');
+    el.innerHTML=`<div class="lhead"><input type="checkbox" ${L.vis!==false?'checked':''}><b>毛球 ${'①②③'[i]||(i+1)}</b></div>`;
+    const cb=el.querySelector('input[type=checkbox]');
+    cb.onchange=()=>{L.vis=cb.checked;draw();};
+    el.onclick=(e)=>{ if(e.target.tagName==='INPUT')return; sel=i;buildPanel();draw(); };
+    if(i===sel){
+      el.appendChild(sliderRow('裁左 %',L.cutL||0,0,99,1,v=>L.cutL=v));
+      el.appendChild(sliderRow('裁右 %',L.cutR||0,0,99,1,v=>L.cutR=v));
+      el.appendChild(sliderRow('裁上 %',L.cutT||0,0,99,1,v=>L.cutT=v));
+      el.appendChild(sliderRow('裁下 %',L.cutB||0,0,99,1,v=>L.cutB=v));
+      const t=document.createElement('div');t.className='giftitle';t.textContent='— 位置 / 大小 —';el.appendChild(t);
+      el.appendChild(sliderRow('X %',L.x,-100,200,0.5,v=>L.x=v));
+      el.appendChild(sliderRow('Y %',L.y,-100,200,0.5,v=>L.y=v));
+      el.appendChild(sliderRow('宽 %',L.w,1,300,0.5,v=>L.w=v));
+      const lr=document.createElement('div');lr.className='lrow';
+      lr.innerHTML=`<label>只显示</label><input type="checkbox" ${L.only?'checked':''}>`;
+      lr.querySelector('input').onchange=e=>{L.only=e.target.checked;draw();};
+      el.appendChild(lr);
+    }
+    box.appendChild(el);
+  });
+}
+function exportJson(){
+  const cfg=JSON.parse(JSON.stringify(CFG));
+  const seg4=cfg.seg[3];
+  yarns.forEach((L,i)=>{
+    const target=seg4.layers.find(l=>l.id===L.id);
+    if(target){
+      target.cropX=L.cutL||0; target.cropY=L.cutT||0;
+      target.cropW=Math.max(1,100-(L.cutL||0)-(L.cutR||0));
+      target.cropH=Math.max(1,100-(L.cutT||0)-(L.cutB||0));
+      target.x=L.x; target.y=L.y; target.w=L.w;
+    }
+  });
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(cfg,null,1));
+  a.download='wornin_project.json'; a.click();
+}
+(async function(){
+  try{ const r=await fetch('wornin_project.json?v='+Date.now()); CFG=await r.json(); }catch(e){ console.error(e); }
+  if(!CFG) return;
+  SEG4=CFG.seg[3];
+  yarns=SEG4.layers.filter(l=>l.kind==='gif'&&l.id.startsWith('yarn'));
+  // 把配置里的 cropX/Y/W/H 换算成 左/右/上/下 四边裁剪
+  yarns.forEach(L=>{
+    const cx=L.cropX||0, cy=L.cropY||0, cw=L.cropW==null?100:L.cropW, ch=L.cropH==null?100:L.cropH;
+    L.cutL=cx; L.cutT=cy; L.cutR=Math.max(0,100-cx-cw); L.cutB=Math.max(0,100-cy-ch);
+  });
+  try{ const m=await (await fetch('assets/gifs/yarn_liquid/meta.json')).json(); meta=m; $('frame').max=meta.frames-1; }catch(e){}
+  imgs[SEG4.bg]=await loadImg(SEG4.bg);
+  for(const L of SEG4.layers) if(L.kind==='img') imgs[L.src]=await loadImg(L.src);
+  const bg=imgs[SEG4.bg]||{width:1999,height:2837};
+  cv.width=1200; cv.height=Math.round(1200*bg.height/bg.width);
+  $('frame').oninput=()=>{curFrame=+$('frame').value;$('frameVal').textContent=curFrame;draw();};
+  $('btnExport').onclick=exportJson;
+  buildPanel();
+  getFrame(curFrame);
+  draw();
+})();
+</script>
+</body>
+</html>

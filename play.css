@@ -1,0 +1,58 @@
+/* Worn-In 播放页样式 — iPad 竖屏 */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang SC","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none}
+#stageBox{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#15120e}
+#cv{max-width:100%;max-height:100%;box-shadow:0 8px 60px rgba(0,0,0,.7);background:#000;touch-action:manipulation}
+
+/* 飘句与香料标签（DOM 层，坐标用 % 相对画布） */
+#fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.floatLine{position:absolute;left:50%;transform:translateX(-50%);max-width:82%;text-align:center;color:#fff;font-size:clamp(14px,3.4vmin,26px);font-weight:600;text-shadow:0 2px 10px rgba(0,0,0,.55),0 0 2px rgba(0,0,0,.4);letter-spacing:1px;opacity:0;white-space:normal;line-height:1.5}
+.floatLine.in{animation:floatInOut 3.2s ease forwards}
+@keyframes floatInOut{0%{opacity:0;transform:translate(-50%,14px)}12%{opacity:1;transform:translate(-50%,0)}85%{opacity:1}100%{opacity:0;transform:translate(-50%,-18px)}}
+
+.spiceTag{position:absolute;transform:translate(-50%,0);text-align:center;color:#fff;pointer-events:none;animation:popIn .5s ease;max-width:30%}
+.spiceTag .nt{font-size:clamp(13px,3vmin,22px);font-weight:800;letter-spacing:2px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.spiceTag .sp{font-size:clamp(10px,2.3vmin,15px);margin-top:3px;text-shadow:0 1px 6px rgba(0,0,0,.6);white-space:normal;line-height:1.4}
+@keyframes popIn{0%{transform:translate(-50%,-8px) scale(.6);opacity:0}100%{transform:translate(-50%,0) scale(1);opacity:1}}
+
+#hud{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 8%}
+#hud .hint{color:#fff;font-size:clamp(14px,3.4vmin,26px);font-weight:700;text-shadow:0 2px 14px rgba(0,0,0,.6);padding:10px 24px;border-radius:30px;background:rgba(0,0,0,.25);animation:breath 1.6s ease-in-out infinite;text-align:center;line-height:1.5;max-width:100%}
+@keyframes breath{0%,100%{opacity:.55}50%{opacity:1}}
+#hud .mini{color:#ffd9a0;font-size:clamp(11px,2.4vmin,16px);margin-top:2px;text-align:center}
+
+#bottomBar{position:absolute;left:0;right:0;bottom:clamp(14px,4vh,40px);display:flex;justify-content:center;gap:14px;pointer-events:none}
+#bottomBar button{pointer-events:auto;padding:13px 26px;border:none;border-radius:30px;font-size:clamp(14px,3vmin,20px);font-weight:700;color:#231a10;background:linear-gradient(#e6c383,#c9a05c);box-shadow:0 6px 20px rgba(0,0,0,.4);cursor:pointer}
+#bottomBar button.ghost{background:rgba(40,34,26,.85);color:#f0e3cd;border:1px solid #6b5a42}
+
+#toast{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);background:#c9a05c;color:#231a10;font-size:14px;padding:8px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60}
+#toast.show{opacity:1}
+
+.overlay{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:rgba(12,9,6,.82)}
+.overlay.hidden,#camOverlay.hidden,#aiLoading.hidden,.hidden{display:none!important}
+.camHead{display:flex;align-items:center;gap:12px;padding:12px 16px;color:#f2e3c8;font-size:15px;background:#201a13}
+#camClose{border:none;background:none;color:#eee;font-size:20px;cursor:pointer}
+#camView{position:relative;flex:1;margin:10px;background:#000;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#camView video,#camView canvas{width:100%;height:100%;object-fit:cover}
+#personGuide{position:absolute;top:12%;bottom:18%;left:8%;right:8%;border:2px dashed #ffd88a;border-radius:14px;pointer-events:none;box-shadow:inset 0 0 60px rgba(255,216,138,.06)}
+#personGuide::after{content:"把上衣对准虚线框";position:absolute;left:0;right:0;bottom:-38px;text-align:center;color:#ffe2ae;font-size:13px}
+#countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#countNum{font-size:120px;color:#ffe6b0;text-shadow:0 0 40px rgba(255,190,80,.6);animation:cdpop .9s ease}
+@keyframes cdpop{0%{transform:scale(1.6);opacity:0}25%{opacity:1}100%{transform:scale(1)}}
+.camBtns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:12px}
+.camErr{color:#ffd0b8;font-size:13px;text-align:center;padding:2px 12px 10px;min-height:16px}
+.camBtns button{padding:12px 20px;border:none;border-radius:24px;font-size:15px;font-weight:700;cursor:pointer;background:#3a332b;color:#eee}
+.camBtns button.big{background:linear-gradient(#e6c383,#c9a05c);color:#231a10;min-width:140px}
+.camBtns button.ok{background:linear-gradient(#9fd08a,#6fb45a);color:#12300a}
+
+#aiLoading{align-items:center;justify-content:center;background:rgba(14,11,8,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.aiCard{background:#241f18;border:1px solid #000;border-radius:18px;padding:28px 40px;text-align:center;color:#f0e3cd}
+.spinner{width:46px;height:46px;margin:0 auto 18px;border:4px solid #4a4134;border-top-color:#e6c383;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#aiErr{color:#ff9f8a;margin-top:12px;font-size:14px}
+#aiErr button{display:block;margin:12px auto 0;padding:8px 18px;border:none;border-radius:16px;background:#c9a05c;color:#231a10;cursor:pointer}
+
+#keyPanel{position:fixed;top:10px;right:10px;z-index:70;background:#241f18;border:1px solid #000;border-radius:12px;padding:12px 14px;width:290px;color:#e8dcc8;font-size:12px}
+#keyPanel p{margin-bottom:8px;color:#d9b37a}
+#keyPanel input{width:100%;padding:6px 8px;border:1px solid #4a4134;background:#14110d;color:#eee;border-radius:6px;margin-bottom:8px}
+#keyPanel button{padding:5px 14px;border:none;border-radius:12px;background:#c9a05c;color:#231a10;cursor:pointer}
+#keyHint{margin-left:8px;color:#8fd08a}

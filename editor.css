@@ -1,0 +1,32 @@
+/* Worn-In 分段编辑器 */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#1d1a16;color:#eee;height:100vh;overflow:hidden}
+#top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;background:#2a251f;border-bottom:1px solid #000}
+#top h1{font-size:16px;color:#d9b37a;margin-right:6px}
+#segs{display:flex;gap:6px}
+#segs button{padding:7px 12px;border:none;border-radius:14px;background:#3a332b;color:#ddd;cursor:pointer;font-size:13px}
+#segs button.on{background:#c9a05c;color:#231a10}
+.tools{margin-left:auto;display:flex;gap:6px}
+.tools button{padding:6px 10px;border:1px solid #5a4f42;background:#3a332b;color:#eee;border-radius:8px;cursor:pointer;font-size:12px}
+#main{display:flex;height:calc(100vh - 60px)}
+#stageBox{flex:1;display:flex;align-items:center;justify-content:center;background:repeating-conic-gradient(#202020 0 25%, #262626 0 50%) 0 0/24px 24px;overflow:hidden;padding:12px}
+#cv{max-width:100%;max-height:100%;box-shadow:0 6px 40px rgba(0,0,0,.6);background:#000}
+#panel{width:340px;border-left:1px solid #000;background:#23201b;overflow:auto;padding:12px}
+#segTitle{color:#e3c48f;margin-bottom:2px}
+.hint{color:#9a8c78;font-size:12px;margin-bottom:10px;line-height:1.6}
+.layer{background:#2c2822;border:1px solid #000;border-radius:10px;margin-bottom:8px;padding:8px;cursor:pointer}
+.layer.sel{border-color:#c9a05c;box-shadow:0 0 0 1px #c9a05c}
+.lhead{display:flex;align-items:center;gap:6px}
+.lhead b{flex:1;font-size:13px}
+.lhead span{color:#9a8c78;font-size:11px}
+.lrow{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:12px;color:#cdc2b2}
+.lrow label{width:52px;flex:0 0 52px}
+.lrow input[type=range]{flex:1;min-width:0}
+.lrow .nm{width:64px;flex:0 0 64px;background:#14110d;border:1px solid #4a4134;color:#e3c48f;border-radius:4px;padding:2px 4px;text-align:center}
+.lrow .val{width:40px;text-align:right;color:#e3c48f}
+.lrow input[type=number]{width:52px;background:#14110d;border:1px solid #4a4134;color:#eee;border-radius:4px;padding:2px 4px}
+.giftitle{font-size:11px;color:#d9b37a;margin-top:6px}
+.hide{display:none}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#c9a05c;color:#231a10;font-size:13px;padding:8px 16px;border-radius:20px;box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:99}
+#toast.show{opacity:1}
+#btnSave{background:#7c5a2e;border-color:#b8904f}

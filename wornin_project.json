@@ -1,0 +1,202 @@
+{
+ "seg": [
+  {
+   "name": "1 · 烟雾飘（上传衣物）",
+   "bg": "assets/materials/bg.png",
+   "layers": [
+    {
+     "id": "cabinet",
+     "kind": "img",
+     "label": "柜子",
+     "src": "assets/materials/cabinet.png",
+     "x": 4.5,
+     "y": 38.5,
+     "w": 52,
+     "vis": true
+    },
+    {
+     "id": "mirror",
+     "kind": "img",
+     "label": "镜子",
+     "src": "assets/materials/mirror.png",
+     "x": 64.5,
+     "y": 40,
+     "w": 19,
+     "vis": true
+    },
+    {
+     "id": "photo",
+     "kind": "photo",
+     "label": "衣物照(镜内)",
+     "vis": false,
+     "inset": 8,
+     "follow": true,
+     "x": 58,
+     "y": 26,
+     "w": 8
+    },
+    {
+     "id": "smoke",
+     "kind": "gif",
+     "label": "烟雾 GIF",
+     "gif": "smoke",
+     "x": -13,
+     "y": 33,
+     "w": 119,
+     "vis": true,
+     "cropX": 0,
+     "cropY": 0,
+     "cropW": 100,
+     "cropH": 100,
+     "f0": 0,
+     "f1": null,
+     "speed": 7.5
+    }
+   ]
+  },
+  {
+   "name": "2 · 丝带飘",
+   "bg": "assets/materials/bg.png",
+   "layers": [
+    {
+     "id": "cabinet",
+     "kind": "img",
+     "label": "柜子",
+     "src": "assets/materials/cabinet.png",
+     "x": 4.5,
+     "y": 38.5,
+     "w": 52,
+     "vis": true
+    },
+    {
+     "id": "mirror",
+     "kind": "img",
+     "label": "镜子",
+     "src": "assets/materials/mirror.png",
+     "x": 64.5,
+     "y": 42,
+     "w": 19,
+     "vis": true
+    },
+    {
+     "id": "ribbon",
+     "kind": "gif",
+     "label": "丝带 GIF",
+     "gif": "ribbon",
+     "x": -15.5,
+     "y": 32.5,
+     "w": 125.5,
+     "vis": true,
+     "cropX": 0,
+     "cropY": 0,
+     "cropW": 100,
+     "cropH": 100,
+     "f0": 0,
+     "f1": 46,
+     "speed": 14
+    }
+   ]
+  },
+  {
+   "name": "3 · 衣柜打开",
+   "bg": "assets/materials/bg.png",
+   "layers": [
+    {
+     "id": "cabopen",
+     "kind": "gif",
+     "label": "衣柜打开 GIF",
+     "gif": "cabinet_open",
+     "x": -28,
+     "y": 26,
+     "w": 158,
+     "vis": true,
+     "cropX": 0,
+     "cropY": 0,
+     "cropW": 100,
+     "cropH": 100,
+     "f0": 0,
+     "f1": null,
+     "speed": 9
+    },
+    {
+     "id": "mirror",
+     "kind": "img",
+     "label": "镜子",
+     "src": "assets/materials/mirror.png",
+     "x": 58,
+     "y": 26,
+     "w": 8,
+     "vis": false
+    }
+   ]
+  },
+  {
+   "name": "4 · 毛线球变液体(放大)",
+   "bg": "assets/materials/bg_zoom.png",
+   "layers": [
+    {
+     "id": "cabzoom",
+     "kind": "img",
+     "label": "放大柜子",
+     "src": "assets/materials/cabinet_zoom.png",
+     "x": -2,
+     "y": 6,
+     "w": 102,
+     "vis": true
+    },
+    {
+     "id": "yarn",
+     "kind": "gif",
+     "label": "毛线球→液体 ①",
+     "gif": "yarn_liquid",
+     "x": -33.5,
+     "y": 9,
+     "w": 169,
+     "vis": true,
+     "cropX": 42,
+     "cropY": 0,
+     "cropW": 8,
+     "cropH": 100,
+     "f0": 0,
+     "f1": null,
+     "speed": 4.3
+    },
+    {
+     "id": "yarn2",
+     "kind": "gif",
+     "label": "毛线球→液体 ②",
+     "gif": "yarn_liquid",
+     "x": -20.5,
+     "y": 9,
+     "w": 169,
+     "vis": true,
+     "cropX": 42,
+     "cropY": 0,
+     "cropW": 8,
+     "cropH": 100,
+     "f0": 0,
+     "f1": null,
+     "speed": 4.3
+    },
+    {
+     "id": "yarn3",
+     "kind": "gif",
+     "label": "毛线球→液体 ③",
+     "gif": "yarn_liquid",
+     "x": -46.5,
+     "y": 9,
+     "w": 167.5,
+     "vis": true,
+     "cropX": 41,
+     "cropY": 0,
+     "cropW": 9,
+     "cropH": 100,
+     "f0": 0,
+     "f1": null,
+     "speed": 4.3
+    }
+   ]
+  }
+ ],
+ "photo": null
+}
