@@ -372,9 +372,27 @@ function askRetry(e){ return new Promise(res=>{
   $('aiRetryBtn').onclick=async()=>{ hideAI(); res(await runAI()); };
 }); }
 function showAILoading(msg){ $('aiLoading').classList.remove('hidden'); $('aiText').textContent=msg; }
+// 确保有 Key：没有就自动弹出输入框，填一次永久记住（不再报“没 key”）
+function ensureKey(){
+  const k=getKey(); if(k) return Promise.resolve(k);
+  return new Promise(resolve=>{
+    const kp=$('keyPanel'), inp=$('keyInput');
+    kp.classList.remove('hidden'); inp.value=''; inp.focus();
+    toast('请先填入 OpenAI API Key（只存本机浏览器）');
+    const done=()=>{
+      const v=inp.value.trim(); if(!v) return;
+      setKey(v);
+      $('keyHint').classList.remove('hidden');
+      kp.classList.add('hidden');
+      resolve(v);
+    };
+    $('keySave').onclick=done;
+    inp.onkeydown=e=>{ if(e.key==='Enter') done(); };
+  });
+}
 
 async function analyzePhoto(){
-  const key=getKey(); if(!key){ showAILoading('请先点右上角 ⚙ 填入 OpenAI Key'); throw new Error('no key'); }
+  const key=await ensureKey();
   if(!photo.crop) throw new Error('没有照片');
   const b64=photo.crop.toDataURL('image/jpeg',0.9).split(',')[1];
   const user='分析这张衣服照片，只输出一个 JSON，字段如下：\n'+
