@@ -48,6 +48,31 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 .aiCard{background:#241f18;border:1px solid #000;border-radius:18px;padding:28px 40px;text-align:center;color:#f0e3cd}
 .spinner{width:46px;height:46px;margin:0 auto 18px;border:4px solid #4a4134;border-top-color:#e6c383;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============ 猫眼入口门 ============ */
+#catGate{
+  position:fixed; inset:0; z-index:200;
+  background:radial-gradient(120% 90% at 50% 40%, #2b1a0e 0%, #170c05 100%);
+  touch-action:none; user-select:none; -webkit-user-select:none;
+  font-family:"Arial Rounded MT Bold","PingFang SC","Microsoft YaHei",sans-serif;
+}
+#catCv{position:absolute; inset:0; width:100%; height:100%; display:block}
+#catTouch{
+  position:absolute; left:50%; top:63%; transform:translate(-50%,-50%);
+  color:#e9c873; font-size:15px; letter-spacing:5px; font-weight:600;
+  text-shadow:0 0 10px rgba(233,200,115,.55);
+  opacity:0; pointer-events:none; z-index:202; cursor:pointer; transition:opacity .3s;
+}
+#catTouch.show{opacity:1; pointer-events:auto; animation:catPulse 2s ease-in-out infinite}
+@keyframes catPulse{0%,100%{opacity:.8}50%{opacity:1;text-shadow:0 0 16px rgba(233,200,115,.85)}}
+#catPerfume{
+  position:absolute; left:50%; top:63%; transform:translate(-50%,-50%);
+  color:#e9c873; font-size:15px; letter-spacing:2px; font-style:italic; font-weight:500;
+  text-shadow:0 0 12px rgba(233,200,115,.6);
+  opacity:0; z-index:203; pointer-events:none; transition:opacity .4s;
+  white-space:nowrap; max-width:92vw; text-align:center;
+}
+#catPerfume.show{opacity:1}
 #aiErr{color:#ff9f8a;margin-top:12px;font-size:14px}
 #aiErr button{display:block;margin:12px auto 0;padding:8px 18px;border:none;border-radius:16px;background:#c9a05c;color:#231a10;cursor:pointer}
 

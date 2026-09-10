@@ -655,6 +655,9 @@ window.PLAY=PLAY;
     SEG[1].push(clone(ph));
   }
   raf=requestAnimationFrame(loop);
-  if(DEMO) toast('演示模式 · 自动跑完整流程');
-  runAll(false);
+  // 猫眼门放行后才真正开始
+  let started=false;
+  window.__startWornIn=()=>{ if(started) return; started=true; if(DEMO) toast('演示模式 · 自动跑完整流程'); runAll(false); };
+  if(!document.getElementById('catGate')) window.__startWornIn();
+  else if(window.__unlocked) window.__startWornIn();
 })();

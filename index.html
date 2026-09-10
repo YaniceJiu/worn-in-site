@@ -7,6 +7,13 @@
 <link rel="stylesheet" href="play.css?v=3">
 </head>
 <body>
+<!-- 猫眼入口门：点击猫眼后网站才开始 -->
+<div id="catGate">
+  <canvas id="catCv"></canvas>
+  <div id="catTouch">touch me</div>
+  <div id="catPerfume">let me make your clothes into a perfume</div>
+</div>
+
 <div id="stageBox">
   <canvas id="cv"></canvas>
   <div id="fx"></div>            <!-- 飘句/香料标签层 -->
@@ -55,7 +62,8 @@
 
 <script src="js/apikey.js"></script>
 <script src="js/copykit.js?v=2"></script>
-<script src="js/play.js?v=18"></script>
+<script type="module" src="js/catgate.js?v=1"></script>
+  <script src="js/play.js?v=20"></script>
 <!-- 临时 AI 调试小框：之后删掉这一行即可整体移除 -->
 <script src="js/debugpanel.js"></script>
 </body>
