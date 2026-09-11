@@ -228,7 +228,10 @@
      "cutL": 0,
      "cutT": 0,
      "cutR": 0,
-     "cutB": 0
+     "cutB": 0,
+     "liqW": 55,
+     "liqY": 132.5,
+     "liqX": 44
     },
     {
      "id": "yarn2",
@@ -249,7 +252,10 @@
      "cutL": 0,
      "cutT": 0,
      "cutR": 0,
-     "cutB": 0
+     "cutB": 0,
+     "liqW": 50.5,
+     "liqY": 129,
+     "liqX": 45.5
     },
     {
      "id": "yarn3",
@@ -270,7 +276,10 @@
      "cutL": 0,
      "cutT": 0,
      "cutR": 0,
-     "cutB": 0
+     "cutB": 0,
+     "liqW": 53.5,
+     "liqY": 136,
+     "liqX": 46.5
     }
    ]
   }
