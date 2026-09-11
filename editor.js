@@ -2,8 +2,9 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
-const GIFTOTAL={smoke:21,ribbon:47,cabinet_open:9,yarn_liquid:530};
+const GIFTOTAL={smoke:21,ribbon:47,cabinet_open:9,yarn_liquid:530,glitter:315};
 const GIFDELAY={}; // gifKey -> [delays]
+const ASSETV='4';  // 素材版本号：换了 GIF/meta 就 +1，强制刷新缓存
 
 /* ---- 四个时间段 ---- */
 const SEG=[
@@ -11,7 +12,7 @@ const SEG=[
   layers:[
    {id:'cabinet',kind:'img',label:'柜子',src:'assets/materials/cabinet.png',x:34,y:40,w:20,vis:true},
    {id:'mirror',kind:'img',label:'镜子',src:'assets/materials/mirror.png',x:58,y:26,w:8,vis:true},
-   {id:'photo',kind:'photo',label:'衣物照(镜内)',vis:false,inset:8,follow:true,x:58,y:26,w:8},
+   {id:'photo',kind:'photo',label:'衣物照(镜内)',vis:false,follow:true,mx:9.2,my:6.2,mw:80.1,mh:73.0,zoom:100},
    {id:'smoke',kind:'gif',label:'烟雾 GIF',gif:'smoke',x:4,y:14,w:70,vis:true,
       cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1}
   ]},
@@ -19,7 +20,10 @@ const SEG=[
   layers:[
    {id:'cabinet',kind:'img',label:'柜子',src:'assets/materials/cabinet.png',x:34,y:40,w:20,vis:true},
    {id:'mirror',kind:'img',label:'镜子',src:'assets/materials/mirror.png',x:58,y:26,w:8,vis:true},
+   {id:'photo',kind:'photo',label:'衣物照(镜内)',vis:false,follow:true,mx:9.2,my:6.2,mw:80.1,mh:73.0,zoom:100},
    {id:'ribbon',kind:'gif',label:'丝带 GIF',gif:'ribbon',x:20,y:18,w:60,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1},
+   {id:'glitter',kind:'gif',label:'闪粉 GIF',gif:'glitter',x:0,y:0,w:100,vis:true,
       cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1}
   ]},
  {id:'seg3',name:'3 · 衣柜打开',bg:'assets/materials/bg.png',
@@ -55,7 +59,7 @@ async function preloadStatic(){
     }
   }
 }
-function frameURL(gif,f){ return 'assets/gifs/'+gif+'/frames/f'+String(f).padStart(4,'0')+'.png'; }
+function frameURL(gif,f){ return 'assets/gifs/'+gif+'/frames/f'+String(f).padStart(4,'0')+'.png?v='+ASSETV; }
 function getFrame(gif,f){
   const k=gif+'_'+f;
   if(!frameCache[k]){ const im=new Image(); im.src=frameURL(gif,f); frameCache[k]=im; }
@@ -63,7 +67,7 @@ function getFrame(gif,f){
 }
 async function loadMeta(){
   for(const g in GIFTOTAL){
-    try{ const m=await (await fetch('assets/gifs/'+g+'/meta.json')).json();
+    try{ const m=await (await fetch('assets/gifs/'+g+'/meta.json?v='+ASSETV)).json();
       GIFDELAY[g]=m.delays; GIFTOTAL[g]=m.frames; }catch(e){}
   }
 }
@@ -91,32 +95,44 @@ function drawLayer(L){
   }else if(L.kind==='photo'){
     if(!photo.url) return;
     const mirror=SEG[seg].layers.find(l=>l.id==='mirror');
-    let box={x:L.x,y:L.y,w:L.w};
-    if(L.follow && mirror){ box={x:mirror.x,y:mirror.y,w:mirror.w}; L.x=mirror.x;L.y=mirror.y;L.w=mirror.w; }
-    const mw=box.w/100*W, mh=mw*(imgs['assets/materials/mirror.png']?imgs['assets/materials/mirror.png'].height/imgs['assets/materials/mirror.png'].width:1.6);
-    const mx=box.x/100*W, my=box.y/100*H;
-    const ix=L.inset/100*Math.min(mw,mh);   // 内缩
-    const ax=mx+ix, ay=my+ix, aw=mw-2*ix, ah=mh-2*ix;
+    let bx=L.x, by=L.y, bwd=L.w;
+    if(L.follow && mirror){ bx=mirror.x; by=mirror.y; bwd=mirror.w; }
+    const mw=bwd/100*W, mh=mw*(imgs['assets/materials/mirror.png']?imgs['assets/materials/mirror.png'].height/imgs['assets/materials/mirror.png'].width:1.6);
+    const mx=bx/100*W, my=by/100*H;
+    const bx0=L.mx!=null?L.mx:9.2, by0=L.my!=null?L.my:6.2;
+    const bww=L.mw!=null?L.mw:80.1, bhh=L.mh!=null?L.mh:73.0;
+    const ax=mx+bx0/100*mw, ay=my+by0/100*mh, aw=bww/100*mw, ah=bhh/100*mh;
     if(aw<=0||ah<=0) return;
     ctx.save(); roundRect(ax,ay,aw,ah,aw*0.10); ctx.clip();
     const im=photo.img||(photo.img=new Image()); 
     if(im.src!==photo.url){im.src=photo.url;}
-    if(im.complete&&im.naturalWidth){ ctx.drawImage(im,ax,ay,aw,ah); }
+    if(im.complete&&im.naturalWidth){
+      const zoom=(L.zoom!=null?L.zoom:100)/100;
+      const sc=Math.max(aw/im.naturalWidth, ah/im.naturalHeight)*zoom;
+      const pdw=im.naturalWidth*sc, pdh=im.naturalHeight*sc;
+      ctx.drawImage(im, ax+(aw-pdw)/2, ay+(ah-pdh)/2, pdw, pdh);
+    }
     ctx.restore();
   }else if(L.kind==='gif'){
     const g=GIFTOTAL[L.gif]; if(!g) return;
     const fi=(gifAnim[L.id]&&gifAnim[L.id].f)||0;
     const im=getFrame(L.gif, fi);
-    // 裁切(相对原帧 %)
-    const fw=im.width||(960), fh=im.height||(540);
-    const sx=L.cropX/100*fw, sy=L.cropY/100*fh, sw=L.cropW/100*fw, sh=L.cropH/100*fh;
-    const dh=dw*sh/sw;
-    ctx.drawImage(im,sx,sy,sw,sh, dx,dy,dw,dh);
+    if(!im.complete||!im.naturalWidth) return;
+    const fw=im.naturalWidth, fh=im.naturalHeight;
+    const cx=L.cropX||0, cy=L.cropY||0, cw=L.cropW==null?100:L.cropW, ch=L.cropH==null?100:L.cropH;
+    const sx=cx/100*fw, sy=cy/100*fh, sw=cw/100*fw, sh=ch/100*fh;
+    const dh=dw*fh/fw;
+    const ddx=dx+cx/100*dw, ddy=dy+cy/100*dh, ddw=cw/100*dw, ddh=ch/100*dh;
+    ctx.drawImage(im,sx,sy,sw,sh,ddx,ddy,ddw,ddh);
   }
 }
 function draw(){
   const bg=imgs[SEG[seg].bg];
-  if(bg) ctx.drawImage(bg,0,0,cv.width,cv.height); else ctx.fillStyle='#000',ctx.fillRect(0,0,cv.width,cv.height);
+  if(bg){
+    const s=SEG[seg];
+    const bx=(s.bgX||0)/100*cv.width, by=(s.bgY||0)/100*cv.height, bw=(s.bgW!=null?s.bgW:100)/100*cv.width;
+    ctx.drawImage(bg,bx,by,bw,bw*bg.height/bg.width);
+  } else { ctx.fillStyle='#000'; ctx.fillRect(0,0,cv.width,cv.height); }
   for(const L of SEG[seg].layers) drawLayer(L);
 }
 
@@ -162,8 +178,24 @@ function sliderRow(label,val,min,max,step,oninput){
   nm.oninput=()=>{ const v=parseFloat(nm.value); if(!isNaN(v)){ const c=clamp(v); rg.value=c; oninput(c); } };
   return d;
 }
+function cropToCut(L){
+  const cx=L.cropX||0, cy=L.cropY||0, cw=L.cropW==null?100:L.cropW, ch=L.cropH==null?100:L.cropH;
+  L.cutL=cx; L.cutT=cy; L.cutR=Math.max(0,100-cx-cw); L.cutB=Math.max(0,100-cy-ch);
+}
+function cutToCrop(L){
+  const l=L.cutL||0, r=L.cutR||0, t=L.cutT||0, b=L.cutB||0;
+  L.cropX=l; L.cropY=t; L.cropW=Math.max(1,100-l-r); L.cropH=Math.max(1,100-t-b);
+}
 function buildPanel(){
   const box=$('layers'); box.innerHTML='';
+  { const s=SEG[seg];
+    const bgEl=document.createElement('div'); bgEl.className='layer';
+    bgEl.innerHTML=`<div class="lhead"><b>🖼 背景</b><span>图片</span></div>`;
+    bgEl.appendChild(sliderRow('X %',+(s.bgX||0).toFixed(1),-100,200,0.5,v=>{s.bgX=v;}));
+    bgEl.appendChild(sliderRow('Y %',+(s.bgY||0).toFixed(1),-100,200,0.5,v=>{s.bgY=v;}));
+    bgEl.appendChild(sliderRow('宽 %',+(s.bgW!=null?s.bgW:100).toFixed(1),1,400,0.5,v=>{s.bgW=v;}));
+    box.appendChild(bgEl);
+  }
   SEG[seg].layers.forEach((L,idx)=>{
     const el=document.createElement('div'); el.className='layer'+(idx===sel?' sel':'');
     const kindtxt = L.kind==='gif'?('GIF/'+GIFTOTAL[L.gif]+'帧'):L.kind==='photo'?'照片':L.kind==='img'?'图片':'';
@@ -173,16 +205,19 @@ function buildPanel(){
     cb.onchange=()=>{L.vis=cb.checked; el.className='layer'+(idx===sel?' sel':'');};
     if(idx===sel){
       const add=elm=>el.appendChild(elm);
-      add(sliderRow('X %',+(L.x).toFixed(1),-60,160,0.5,v=>{L.x=v;}));
-      add(sliderRow('Y %',+(L.y).toFixed(1),-60,160,0.5,v=>{L.y=v;}));
-      add(sliderRow('宽 %',+(L.w).toFixed(1),1,200,0.5,v=>{L.w=v;}));
+      if(L.kind!=='photo'){
+        add(sliderRow('X %',+(L.x).toFixed(1),-500,500,0.5,v=>{L.x=v;}));
+        add(sliderRow('Y %',+(L.y).toFixed(1),-500,500,0.5,v=>{L.y=v;}));
+        add(sliderRow('宽 %',+(L.w).toFixed(1),1,1000,0.5,v=>{L.w=v;}));
+      }
       if(L.kind==='gif'){
         const wrap=document.createElement('div'); wrap.className='giftitle';
         wrap.textContent='— GIF 裁切 / 帧 / 速度 —'; el.appendChild(wrap);
-        add(sliderRow('裁X %',L.cropX,0,100,1,v=>L.cropX=v));
-        add(sliderRow('裁Y %',L.cropY,0,100,1,v=>L.cropY=v));
-        add(sliderRow('裁宽 %',L.cropW,1,100,1,v=>L.cropW=v));
-        add(sliderRow('裁高 %',L.cropH,1,100,1,v=>L.cropH=v));
+        cropToCut(L);
+        add(sliderRow('裁左 %',L.cutL,0,99,1,v=>{L.cutL=v;cutToCrop(L);}));
+        add(sliderRow('裁右 %',L.cutR,0,99,1,v=>{L.cutR=v;cutToCrop(L);}));
+        add(sliderRow('裁上 %',L.cutT,0,99,1,v=>{L.cutT=v;cutToCrop(L);}));
+        add(sliderRow('裁下 %',L.cutB,0,99,1,v=>{L.cutB=v;cutToCrop(L);}));
         const g=GIFTOTAL[L.gif];
         const fr=document.createElement('div'); fr.className='lrow';
         fr.innerHTML=`<label>帧</label><input type="number" class="f0" min="0" max="${g-1}" value="${L.f0||0}">~<input type="number" class="f1" min="0" max="${g-1}" value="${L.f1==null?g-1:L.f1}">`;
@@ -192,14 +227,18 @@ function buildPanel(){
         add(sliderRow('速度',L.speed,0.1,20,0.1,v=>L.speed=v));
       }
       if(L.kind==='photo'){
-        add(sliderRow('镜内缩 %',L.inset,0,40,0.5,v=>L.inset=v));
+        add(sliderRow('镜内 X %',+(L.mx!=null?L.mx:9.2).toFixed(1),0,100,0.5,v=>L.mx=v));
+        add(sliderRow('镜内 Y %',+(L.my!=null?L.my:6.2).toFixed(1),0,100,0.5,v=>L.my=v));
+        add(sliderRow('镜内宽 %',+(L.mw!=null?L.mw:80.1).toFixed(1),1,100,0.5,v=>L.mw=v));
+        add(sliderRow('镜内高 %',+(L.mh!=null?L.mh:73.0).toFixed(1),1,100,0.5,v=>L.mh=v));
+        add(sliderRow('照片缩放 %',+(L.zoom!=null?L.zoom:100).toFixed(0),100,400,5,v=>L.zoom=v));
       }
     }
     box.appendChild(el);
   });
   if(SEG[seg].layers.some(l=>l.kind==='photo')){
     const note=document.createElement('p'); note.className='hint';
-    note.textContent='照片默认贴在镜子内侧（内缩可调）；要放别处可拖动 X/Y/宽。';
+    note.textContent='照片框相对镜面：镜内 X/Y 是左上角位置，镜内宽/高是大小（单位 %），缩放控制照片在框内的裁剪。';
     box.appendChild(note);
   }
 }
@@ -223,7 +262,7 @@ function mergeLayers(saved,defs){
   });
 }
 function saveAll(){
-  const state={ seg:SEG.map(s=>JSON.parse(JSON.stringify(s.layers))), photoName:photo.name, photoUrl:photo.url||null };
+  const state={ seg:SEG.map(s=>JSON.parse(JSON.stringify(s.layers))), bg:SEG.map(s=>({x:s.bgX||0,y:s.bgY||0,w:s.bgW!=null?s.bgW:100})), photoName:photo.name, photoUrl:photo.url||null };
   // 先备份当前这份，防止误覆盖/误删导致丢数据
   const cur=localStorage.getItem(SAVE_KEY);
   if(cur){ try{ localStorage.setItem(BACKUP_KEY,cur); }catch(e){} }
@@ -244,6 +283,7 @@ function loadSaved(){
       const d=JSON.parse(raw);
       if(Array.isArray(d.seg)&&d.seg.length===SEG.length){
         d.seg.forEach((ly,i)=>{ SEG[i].layers=mergeLayers(ly,SEG[i].layers); });
+        if(Array.isArray(d.bg)) d.bg.forEach((b,i)=>{ if(b){ SEG[i].bgX=b.x!=null?b.x:0; SEG[i].bgY=b.y!=null?b.y:0; SEG[i].bgW=b.w!=null?b.w:100; } });
       }
       if(d.photoUrl){ photo.url=d.photoUrl; photo.name=d.photoName||''; }
       return true;
@@ -256,9 +296,17 @@ function loadSaved(){
 /* ---- 工具栏 ---- */
 function bindTools(){
   $('btnPlay').onclick=()=>{playing=!playing; $('btnPlay').textContent=playing?'⏸ 暂停预览':'▶ 播放预览';};
-  $('btnSave').onclick=saveAll;
+  $('btnSave').onclick=async()=>{
+    saveAll();
+    const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,bgX:s.bgX,bgY:s.bgY,bgW:s.bgW,layers:s.layers})), photo:photo.name};
+    try{
+      const r=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data,null,1)});
+      if(r.ok) toast('已保存到工程 wornin_project.json ✓');
+      else toast('保存失败：'+(await r.text()));
+    }catch(e){ toast('保存接口不可用，请用「导出配置 JSON」手动覆盖'); }
+  };
   $('btnExport').onclick=()=>{
-    const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,layers:s.layers})), photo:photo.name};
+    const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,bgX:s.bgX,bgY:s.bgY,bgW:s.bgW,layers:s.layers})), photo:photo.name};
     const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,1));
     a.download='wornin_project.json';a.click();
   };
@@ -267,17 +315,57 @@ function bindTools(){
     const f=e.target.files[0]; if(!f) return;
     const rd=new FileReader(); rd.onload=()=>{
       try{ const d=JSON.parse(rd.result); if(d.seg&&d.seg.length===SEG.length){
-        d.seg.forEach((s,i)=>{ if(s.layers) SEG[i].layers=mergeLayers(s.layers,SEG[i].layers); });
+        d.seg.forEach((s,i)=>{ if(s.layers) SEG[i].layers=mergeLayers(s.layers,SEG[i].layers); SEG[i].bgX=s.bgX!=null?s.bgX:0; SEG[i].bgY=s.bgY!=null?s.bgY:0; SEG[i].bgW=s.bgW!=null?s.bgW:100; });
         buildPanel(); toast('已导入并合并配置 ✓');
       } }catch(err){ alert('导入失败'); }
     }; rd.readAsText(f);
   };
   $('btnPhoto').onclick=()=>$('photoFile').click();
+  $('btnSample').onclick=()=>{ makePlaceholderPhoto(); buildPanel(); };
   $('photoFile').onchange=e=>{
     const f=e.target.files[0]; if(!f) return;
     const rd=new FileReader(); rd.onload=()=>{ photo.url=rd.result; photo.name=f.name; photo.img=new Image(); photo.img.onload=()=>{}; photo.img.src=rd.result;
-      const p=SEG[0].layers.find(l=>l.id==='photo'); if(p){p.vis=true;} buildPanel(); }; rd.readAsDataURL(f);
+      SEG.forEach(s=>{ const p=s.layers.find(l=>l.id==='photo'); if(p) p.vis=true; }); buildPanel(); }; rd.readAsDataURL(f);
   };
+}
+
+function applyConfigLayers(cfgLayers, defLayers){
+  const byId=new Map(cfgLayers.map(l=>[l.id,l]));
+  const out=defLayers.map(def=>{
+    const c=byId.get(def.id);
+    return c?Object.assign({}, def, c) : JSON.parse(JSON.stringify(def));
+  });
+  const known=new Set(out.map(l=>l.id));
+  for(const c of cfgLayers){ if(!known.has(c.id)) out.push(c); }
+  return out;
+}
+async function loadConfig(){
+  try{
+    const r=await fetch('wornin_project.json?v='+Date.now());
+    const d=await r.json();
+    if(d.seg&&d.seg.length===SEG.length){
+      d.seg.forEach((s,i)=>{
+        if(s.layers) SEG[i].layers=applyConfigLayers(s.layers, SEG[i].layers);
+        if(s.bgX!=null) SEG[i].bgX=s.bgX;
+        if(s.bgY!=null) SEG[i].bgY=s.bgY;
+        if(s.bgW!=null) SEG[i].bgW=s.bgW;
+      });
+    }
+  }catch(e){ console.warn('[config]',e); }
+}
+
+/* ---- 示例照片（长方形例图，用于预览镜子里的照片位置/大小/裁剪） ---- */
+function makePlaceholderPhoto(){
+  const c=document.createElement('canvas'); c.width=360; c.height=460;
+  const x=c.getContext('2d');
+  x.fillStyle='#e6d8c2'; x.fillRect(0,0,360,460);
+  x.strokeStyle='#c9ad83'; x.lineWidth=10; x.strokeRect(5,5,350,450);
+  x.fillStyle='#9b825e'; x.font='bold 26px sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText('示例照片',180,230);
+  const url=c.toDataURL('image/jpeg',0.92);
+  photo.url=url; photo.name='示例照片';
+  photo.img=new Image(); photo.img.src=url;
+  SEG.forEach(s=>{ const p=s.layers.find(l=>l.id==='photo'); if(p) p.vis=true; });
 }
 
 /* ---- 启动 ---- */
@@ -285,6 +373,8 @@ function bindTools(){
   loadSaved();
   await preloadStatic();
   await loadMeta();
+  await loadConfig();
+  if(!photo.url) makePlaceholderPhoto();
   buildPanel(); segTabs(); bindTools(); bgSize();
   requestAnimationFrame(step);
 })();

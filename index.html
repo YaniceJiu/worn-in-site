@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Worn-In 旧衣·新香</title>
-<link rel="stylesheet" href="play.css?v=3">
+<link rel="stylesheet" href="play.css?v=9">
 </head>
 <body>
 <!-- 猫眼入口门：点击猫眼后网站才开始 -->
@@ -23,25 +23,25 @@
   <div id="toast"></div>
 </div>
 
-<!-- 拍照浮层 -->
+<!-- 拍照浮层：全屏镜头 + 影院倒计时 -->
 <div id="camOverlay" class="overlay hidden">
-  <div class="camHead">
-    <button id="camClose">✕</button>
-    <span id="camTitle">把你的衣服放进镜子里</span>
-  </div>
   <div id="camView">
     <video id="video" playsinline muted></video>
     <canvas id="photoShot" class="hidden"></canvas>
-    <div id="personGuide"></div>
-    <div id="countdown" class="hidden"><span id="countNum">3</span></div>
+    <div id="countdown" class="hidden">
+      <svg id="cdRing" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3"/>
+        <circle id="cdArc" cx="50" cy="50" r="46" fill="none" stroke="#ffe2ae" stroke-width="3" stroke-linecap="round"
+          stroke-dasharray="289" stroke-dashoffset="289" transform="rotate(-90 50 50)"/>
+      </svg>
+      <span id="countNum">3</span>
+    </div>
+    <button id="camClose" aria-label="关闭">✕</button>
+    <div id="camDone" class="hidden">
+      <button id="btnRetake">↺ 重拍</button>
+      <button id="btnOk">制香</button>
+    </div>
   </div>
-  <div class="camBtns">
-    <button id="btnShoot" class="big">📷 拍照</button>
-    <button id="btnRetake" class="hidden">重拍</button>
-    <button id="btnOk" class="hidden">🆗 就用这张</button>
-    <button id="btnPickFile">🖼 从相册选择</button>
-  </div>
-  <input type="file" id="fileInput" accept="image/*" hidden>
 </div>
 
 <!-- AI 加载遮罩 -->
@@ -64,8 +64,6 @@
 <script src="js/apikey.js"></script>
 <script src="js/copykit.js?v=2"></script>
   <script type="module" src="js/catgate.js?v=3"></script>
-  <script src="js/play.js?v=20"></script>
-<!-- 临时 AI 调试小框：之后删掉这一行即可整体移除 -->
-<script src="js/debugpanel.js"></script>
+  <script src="js/play.js?v=36"></script>
 </body>
 </html>

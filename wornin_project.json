@@ -3,15 +3,18 @@
   {
    "name": "1 · 烟雾飘（上传衣物）",
    "bg": "assets/materials/bg.png",
+   "bgX": -3,
+   "bgY": -2.5,
+   "bgW": 106.5,
    "layers": [
     {
      "id": "cabinet",
      "kind": "img",
      "label": "柜子",
      "src": "assets/materials/cabinet.png",
-     "x": 4.5,
-     "y": 38.5,
-     "w": 52,
+     "x": -50.5,
+     "y": -30,
+     "w": 200,
      "vis": true
     },
     {
@@ -19,9 +22,9 @@
      "kind": "img",
      "label": "镜子",
      "src": "assets/materials/mirror.png",
-     "x": 64.5,
-     "y": 40,
-     "w": 19,
+     "x": -10.5,
+     "y": -23.5,
+     "w": 123.5,
      "vis": true
     },
     {
@@ -29,8 +32,13 @@
      "kind": "photo",
      "label": "衣物照(镜内)",
      "vis": false,
-     "inset": 8,
      "follow": true,
+     "mx": 9.2,
+     "my": 6.2,
+     "mw": 80.1,
+     "mh": 73,
+     "zoom": 100,
+     "inset": 8,
      "x": 58,
      "y": 26,
      "w": 8
@@ -40,9 +48,9 @@
      "kind": "gif",
      "label": "烟雾 GIF",
      "gif": "smoke",
-     "x": -13,
-     "y": 33,
-     "w": 119,
+     "x": -295.5,
+     "y": -86,
+     "w": 687,
      "vis": true,
      "cropX": 0,
      "cropY": 0,
@@ -50,22 +58,29 @@
      "cropH": 100,
      "f0": 0,
      "f1": null,
-     "speed": 7.5
+     "speed": 2.5,
+     "cutL": 0,
+     "cutT": 0,
+     "cutR": 0,
+     "cutB": 0
     }
    ]
   },
   {
    "name": "2 · 丝带飘",
    "bg": "assets/materials/bg.png",
+   "bgX": -3,
+   "bgY": -2.5,
+   "bgW": 106.5,
    "layers": [
     {
      "id": "cabinet",
      "kind": "img",
      "label": "柜子",
      "src": "assets/materials/cabinet.png",
-     "x": 4.5,
-     "y": 38.5,
-     "w": 52,
+     "x": -50.5,
+     "y": -30,
+     "w": 200,
      "vis": true
     },
     {
@@ -73,42 +88,31 @@
      "kind": "img",
      "label": "镜子",
      "src": "assets/materials/mirror.png",
-     "x": 64.5,
-     "y": 42,
-     "w": 19,
+     "x": -10.5,
+     "y": -23.5,
+     "w": 123.5,
      "vis": true
+    },
+    {
+     "id": "photo",
+     "kind": "photo",
+     "label": "衣物照(镜内)",
+     "vis": true,
+     "follow": true,
+     "mx": 22,
+     "my": 22.5,
+     "mw": 54.5,
+     "mh": 57,
+     "zoom": 100
     },
     {
      "id": "ribbon",
      "kind": "gif",
      "label": "丝带 GIF",
      "gif": "ribbon",
-     "x": -15.5,
-     "y": 32.5,
-     "w": 125.5,
-     "vis": true,
-     "cropX": 0,
-     "cropY": 0,
-     "cropW": 100,
-     "cropH": 100,
-     "f0": 0,
-     "f1": 46,
-     "speed": 14
-    }
-   ]
-  },
-  {
-   "name": "3 · 衣柜打开",
-   "bg": "assets/materials/bg.png",
-   "layers": [
-    {
-     "id": "cabopen",
-     "kind": "gif",
-     "label": "衣柜打开 GIF",
-     "gif": "cabinet_open",
-     "x": -28,
-     "y": 26,
-     "w": 158,
+     "x": -141.5,
+     "y": -27.5,
+     "w": 430,
      "vis": true,
      "cropX": 0,
      "cropY": 0,
@@ -116,7 +120,62 @@
      "cropH": 100,
      "f0": 0,
      "f1": null,
-     "speed": 9
+     "speed": 13.5,
+     "cutL": 0,
+     "cutT": 0,
+     "cutR": 0,
+     "cutB": 0
+    },
+    {
+     "id": "glitter",
+     "kind": "gif",
+     "label": "闪粉 GIF",
+     "gif": "glitter",
+     "x": -58,
+     "y": 2,
+     "w": 267,
+     "vis": true,
+     "cropX": 28,
+     "cropY": 0,
+     "cropW": 72,
+     "cropH": 100,
+     "f0": 0,
+     "f1": null,
+     "speed": 4,
+     "cutL": 28,
+     "cutT": 0,
+     "cutR": 0,
+     "cutB": 0
+    }
+   ]
+  },
+  {
+   "name": "3 · 衣柜打开",
+   "bg": "assets/materials/bg.png",
+   "bgX": -3,
+   "bgY": -2.5,
+   "bgW": 106.5,
+   "layers": [
+    {
+     "id": "cabopen",
+     "kind": "gif",
+     "label": "衣柜打开 GIF",
+     "gif": "cabinet_open",
+     "x": -138.5,
+     "y": -56.5,
+     "w": 514,
+     "vis": true,
+     "cropX": 0,
+     "cropY": 0,
+     "cropW": 100,
+     "cropH": 100,
+     "f0": 0,
+     "f1": null,
+     "speed": 7.8,
+     "cutL": 0,
+     "cutT": 0,
+     "cutR": 0,
+     "cutB": 0
     },
     {
      "id": "mirror",
@@ -133,15 +192,18 @@
   {
    "name": "4 · 毛线球变液体(放大)",
    "bg": "assets/materials/bg_zoom.png",
+   "bgX": -3,
+   "bgY": -2.5,
+   "bgW": 106.5,
    "layers": [
     {
      "id": "cabzoom",
      "kind": "img",
      "label": "放大柜子",
      "src": "assets/materials/cabinet_zoom.png",
-     "x": -2,
-     "y": 6,
-     "w": 102,
+     "x": -32.5,
+     "y": -18,
+     "w": 166.5,
      "vis": true
     },
     {
@@ -149,9 +211,9 @@
      "kind": "gif",
      "label": "毛线球→液体 ①",
      "gif": "yarn_liquid",
-     "x": -33.5,
-     "y": 9,
-     "w": 169,
+     "x": -81,
+     "y": -12,
+     "w": 270,
      "vis": true,
      "cropX": 42,
      "cropY": 0,
@@ -159,16 +221,20 @@
      "cropH": 100,
      "f0": 0,
      "f1": null,
-     "speed": 4.3
+     "speed": 4.3,
+     "cutL": 42,
+     "cutT": 0,
+     "cutR": 50,
+     "cutB": 0
     },
     {
      "id": "yarn2",
      "kind": "gif",
      "label": "毛线球→液体 ②",
      "gif": "yarn_liquid",
-     "x": -20.5,
-     "y": 9,
-     "w": 169,
+     "x": -60,
+     "y": -11.5,
+     "w": 269,
      "vis": true,
      "cropX": 42,
      "cropY": 0,
@@ -176,16 +242,20 @@
      "cropH": 100,
      "f0": 0,
      "f1": null,
-     "speed": 4.3
+     "speed": 4.3,
+     "cutL": 42,
+     "cutT": 0,
+     "cutR": 50,
+     "cutB": 0
     },
     {
      "id": "yarn3",
      "kind": "gif",
      "label": "毛线球→液体 ③",
      "gif": "yarn_liquid",
-     "x": -46.5,
-     "y": 9,
-     "w": 167.5,
+     "x": -103,
+     "y": -12.5,
+     "w": 270,
      "vis": true,
      "cropX": 41,
      "cropY": 0,
@@ -193,10 +263,14 @@
      "cropH": 100,
      "f0": 0,
      "f1": null,
-     "speed": 4.3
+     "speed": 4.3,
+     "cutL": 41,
+     "cutT": 0,
+     "cutR": 50,
+     "cutB": 0
     }
    ]
   }
  ],
- "photo": null
+ "photo": "示例照片"
 }

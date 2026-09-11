@@ -25,8 +25,9 @@ const DEMO=location.search.includes('demo');
 /* ---------- 通用 ---------- */
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function loadImg(url){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=url;});}
-function frameURL(gif,f){return 'assets/gifs/'+gif+'/frames/f'+String(f).padStart(4,'0')+'.png';}
-function getFrame(gif,f){const k=gif+'_'+f;if(!FRAMES[k]){const im=new Image();im.onload=()=>{FRAMES[k].ready=true;};im.src=frameURL(gif,f);FRAMES[k]=im;}return FRAMES[k];}
+const GIFV='4';
+function frameURL(gif,f){return 'assets/gifs/'+gif+'/frames/f'+String(f).padStart(4,'0')+'.png?v='+GIFV;}
+function getFrame(gif,f){const k=gif+'_'+f;if(!FRAMES[k]){const im=new Image();im.onload=()=>{const e=FRAMES[k]; if(e) e.ready=true;};im.src=frameURL(gif,f);FRAMES[k]=im;}return FRAMES[k];}
 function sumDelays(gif,f0,f1,speed){
   const m=META[gif]; if(!m) return 1000;
   const e=(f1==null||f1>=m.frames)?m.frames-1:f1, s=Math.min(f0||0,e);
@@ -42,8 +43,8 @@ async function preloadStatic(){
   }
 }
 async function loadMetaAll(){
-  for(const g of ['smoke','ribbon','cabinet_open','yarn_liquid']){
-    try{ const m=await (await fetch('assets/gifs/'+g+'/meta.json')).json(); META[g]={delays:m.delays,frames:m.frames}; }
+  for(const g of ['smoke','ribbon','cabinet_open','yarn_liquid','glitter']){
+    try{ const m=await (await fetch('assets/gifs/'+g+'/meta.json?v='+GIFV)).json(); META[g]={delays:m.delays,frames:m.frames}; }
     catch(e){ console.warn('meta',g,e); }
   }
 }
@@ -63,8 +64,8 @@ function bottom(html){ const b=$('bottomBar'); if(html==null){b.classList.add('h
 /* ============================================================
    绘制
    ============================================================ */
-const TINT_CACHE={};
-const TINT_ORDER=[];   // FIFO 顺序，用于限制染色缓存大小(大图防内存爆)
+const SVGFRAMES={ball:[],liquid:[]};   // 段4矢量帧：原始 SVG 文本
+const SVGIMG={};                       // 'ball|hex|f' -> Image
 function hexRGB(h){ const m=/^#?([0-9a-f]{6})$/i.exec(h||''); if(!m) return null;
   return {r:parseInt(m[1].slice(0,2),16),g:parseInt(m[1].slice(2,4),16),b:parseInt(m[1].slice(4,6),16)}; }
 // 舒适化：明度 >0.72 压缩；饱和度 >0.70 大幅降（克莱因蓝等艳色靠这步）
@@ -93,26 +94,52 @@ function comfortHex(hx){
 }
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 
-function tintedCanvas(im,hex){
-  if(!im.complete||!im.naturalWidth) return im;
-  const key=hex+'_'+im.src; if(TINT_CACHE[key]) return TINT_CACHE[key];
-  const t=hexRGB(comfortHex(hex)); if(!t){ TINT_CACHE[key]=im; return im; }
-  const c=document.createElement('canvas');
-  c.width=im.naturalWidth; c.height=im.naturalHeight;
-  const x=c.getContext('2d'); x.drawImage(im,0,0);
-  const id=x.getImageData(0,0,c.width,c.height), d=id.data;
-  for(let i=0;i<d.length;i+=4){
-    const rr=d[i],gg=d[i+1],bb=d[i+2],a=d[i+3]; if(!a) continue;
-    const mx=Math.max(rr,gg,bb), mn=Math.min(rr,gg,bb);
-    const sat=mx===0?0:(mx-mn)/mx;
-    const lum=0.299*rr+0.587*gg+0.114*bb;
-    if(lum>150 && sat<0.42){ d[i]=t.r; d[i+1]=t.g; d[i+2]=t.b; }
+/* ---- 段4：毛球/液面用矢量 SVG 帧 + fill 染色（丝滑、不卡、不闪） ---- */
+let svgLoadPromise=null;
+async function loadSvgFrames(){
+  const load=(base,n,arr)=>{
+    const tasks=[];
+    for(let i=0;i<n;i++){
+      const name=base==='ball' ? 'yarn_ball_'+String(i+1).padStart(2,'0') : 'liquid_'+String(i+1).padStart(2,'0');
+      tasks.push(fetch('assets/svg/'+base+'/'+name+'.svg?v='+GIFV).then(r=>r.text()).then(t=>{arr[i]=t;}).catch(()=>{}));
+    }
+    return Promise.all(tasks);
+  };
+  await Promise.all([load('ball',52,SVGFRAMES.ball), load('liquid',50,SVGFRAMES.liquid)]);
+}
+function ensureSvgFrames(){ if(!svgLoadPromise) svgLoadPromise=loadSvgFrames(); return svgLoadPromise; }
+function svgImg(base,f,hex){
+  const key=base+'|'+(hex||'')+'|'+f;
+  if(SVGIMG[key]) return SVGIMG[key];
+  let t=SVGFRAMES[base]&&SVGFRAMES[base][f]; if(!t) return null;
+  if(hex){ t=t.replace(/fill="#(?:ffffff|f4f1e9)"/gi,'fill="'+hex+'"'); }
+  const url=URL.createObjectURL(new Blob([t],{type:'image/svg+xml'}));
+  const im=new Image(); im.src=url; SVGIMG[key]=im;
+  return im;
+}
+function drawYarnSVG(L,f,hex){
+  const dx=L.x/100*W, dy=L.y/100*H, dw=L.w/100*W;
+  const cx=L.cropX||0, cy=L.cropY||0, cw=L.cropW==null?100:L.cropW, ch=L.cropH==null?100:L.cropH;
+  const dh=dw*(1080/1920);
+  const ddx=dx+cx/100*dw, ddy=dy+cy/100*dh, ddw=cw/100*dw, ddh=ch/100*dh;
+  const ga=gifState[L.id], end=(ga&&ga.end)||529;
+  const bf=Math.min(51,Math.max(0,Math.round(f*51/end)));
+  const lf=Math.min(49,Math.max(0,Math.round(f*49/end)));
+  const bim=svgImg('ball',bf,hex), lim=svgImg('liquid',lf,hex);
+  const bxc=ddx+ddw/2;
+  // 球：瓶子顶部（可在配置 ballX/ballY/ballW 微调）
+  const bw=((L.ballW!=null?L.ballW:62)/100)*ddw;
+  if(bim&&bim.complete&&bim.naturalWidth){
+    const bx=bxc-bw/2, by=ddy+((L.ballY!=null?L.ballY:10)/100)*ddh;
+    ctx.drawImage(bim, bx, by, bw, bw);
   }
-  x.putImageData(id,0,0);
-  TINT_CACHE[key]=c;
-  TINT_ORDER.push(key);
-  while(TINT_ORDER.length>16){ const k0=TINT_ORDER.shift(); delete TINT_CACHE[k0]; }
-  return c;
+  // 液面：球下方（可在配置 liqX/liqY/liqW 微调）
+  const lw=((L.liqW!=null?L.liqW:96)/100)*ddw;
+  if(lim&&lim.complete&&lim.naturalWidth){
+    const lh=lw*(378/352);
+    const lx=bxc-lw/2, ly=ddy+((L.liqY!=null?L.liqY:32)/100)*ddh;
+    ctx.drawImage(lim, lx, ly, lw, lh);
+  }
 }
 
 function drawLayer(L,st){
@@ -140,14 +167,27 @@ function drawLayer(L,st){
     if(oa<=0.02) return;
     ctx.save(); ctx.globalAlpha=oa;
     if(ox||oy||os!==1){ ctx.translate(mx+mw/2,my+mh/2); ctx.scale(os,os); ctx.translate(-(mx+mw/2),-(my+mh/2)); ctx.translate(ox,oy); }
-    const ix=L.inset/100*Math.min(mw,mh), ax=mx+ix, ay=my+ix, aw=mw-2*ix, ah=mh-2*ix;
-    if(aw>0&&ah>0){ ctx.save(); roundRect(ax,ay,aw,ah,aw*0.08); ctx.clip(); ctx.drawImage(photo.img,ax,ay,aw,ah); ctx.restore(); }
+    // 照片框（相对镜面，%，可在编辑器手动调）
+    const bx0=L.mx!=null?L.mx:9.2, by0=L.my!=null?L.my:6.2;
+    const bw=L.mw!=null?L.mw:80.1, bh=L.mh!=null?L.mh:73.0;
+    const ax=mx+bx0/100*mw, ay=my+by0/100*mh, aw=bw/100*mw, ah=bh/100*mh;
+    if(aw>0&&ah>0){ ctx.save(); roundRect(ax,ay,aw,ah,aw*0.08); ctx.clip();
+      const pim=photo.img, iw=pim.naturalWidth, ih=pim.naturalHeight;
+      const zoom=(L.zoom!=null?L.zoom:100)/100;
+      const sc=Math.max(aw/iw, ah/ih)*zoom; const pdw=iw*sc, pdh=ih*sc;
+      ctx.drawImage(pim, ax+(aw-pdw)/2, ay+(ah-pdh)/2, pdw, pdh);
+      ctx.restore(); }
     ctx.restore();
   }else if(L.kind==='gif'){
     if(skipGif.has(L.id)) return;
     const g=META[L.gif]; if(!g) return;
     const ga=gifState[L.id]; if(!ga||ga.f==null) return;
     const f=Math.min(ga.f,g.frames-1);
+    // 毛线球/液面：矢量 SVG 帧 + fill 染色（丝滑不闪）
+    if(L.id.startsWith('yarn') && SVGFRAMES.ball.length){
+      drawYarnSVG(L, f, (st.yarnTint&&st.yarnTint[L.id])||null);
+      return;
+    }
     const im=getFrame(L.gif,f);
     if(!im.complete||!im.naturalWidth) return;   // 帧未加载完，等下一帧
     const fw=im.naturalWidth,fh=im.naturalHeight;
@@ -155,16 +195,17 @@ function drawLayer(L,st){
     const sx=cx/100*fw, sy=cy/100*fh, sw=cw/100*fw, sh=ch/100*fh;
     const dh=dw*fh/fw;                                             // 完整素材框（位置固定）
     const ddx=dx+cx/100*dw, ddy=dy+cy/100*dh, ddw=cw/100*dw, ddh=ch/100*dh;   // 框内保留区
-    const tint=st.yarnTint && L.id.startsWith('yarn') ? st.yarnTint[L.id] : null;
-    if(tint){ const tc=tintedCanvas(im,tint); const sc=tc.width/fw;
-      ctx.drawImage(tc, sx*sc, sy*sc, sw*sc, sh*sc, ddx,ddy,ddw,ddh); }
-    else ctx.drawImage(im, sx,sy,sw,sh, ddx,ddy,ddw,ddh);
+    ctx.drawImage(im, sx,sy,sw,sh, ddx,ddy,ddw,ddh);
   }
 }
 function drawScene(segIdx,st){
   ctx.clearRect(0,0,W,H);
-  const bg=IMGS[CFG.seg[segIdx].bg];
-  if(bg) ctx.drawImage(bg,0,0,W,H); else { ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); }
+  const segDef=CFG.seg[segIdx];
+  const bg=IMGS[segDef.bg];
+  if(bg){
+    const bx=(segDef.bgX||0)/100*W, by=(segDef.bgY||0)/100*H, bw=(segDef.bgW!=null?segDef.bgW:100)/100*W;
+    ctx.drawImage(bg,bx,by,bw,bw*bg.height/bg.width);
+  } else { ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); }
   const base=Object.assign({segIdx},st);
   for(const L of SEG[segIdx]) drawLayer(L,base);
 }
@@ -180,6 +221,7 @@ function playGifLayer(L,loops,cb){
   gifState[L.id]={f:start,acc:0,play:true,start,end,loops:loops||1,cb:cb||null};
   preload(L.gif,start,end,8);
 }
+function stopGifLayer(id){ const a=gifState[id]; if(a){ a.play=false; a.cb=null; } }
 function preload(gif,from,to,n){
   for(let i=0;i<n;i++){ const f=Math.min(from+i,to); getFrame(gif,f); }
 }
@@ -207,7 +249,6 @@ function stepGifs(dt){
 const P={TREM:0,SMOKE:1,MTREM:2,RIB:3,DOOR:4,YARN:5,FINAL:6};
 let phase=P.TREM;
 let tremble=0;      // 颤动偏移(逻辑px 横)
-let ribbonP=0;      // 镜漂移 0..1
 let mirJit=0, mirOn=false;
 const skipGif=new Set();   // 播完一次后不再显示的 gif 层
 let yarnTint={};    // layerId -> hex
@@ -217,7 +258,7 @@ function begin(p){ phase=p; }
 let last=performance.now(),raf=0;
 function loop(t){
   const dt=Math.min(60,t-last); last=t;
-  mirJit=mirOn?Math.sin(t/55)*3.2:0;
+  mirJit=mirOn?Math.sin(t/420)*7:0;
   stepGifs(dt); draw();
   raf=requestAnimationFrame(loop);
 }
@@ -227,8 +268,8 @@ function draw(){
   switch(phase){
     case P.TREM:
     case P.SMOKE: drawScene(0,{showPhoto:false}); break;
-    case P.MTREM: drawScene(0,{showPhoto:!!photo.url, mirrorOff:{dx:mirJit/W, dy:0, alpha:1, scale:1}}); break;
-    case P.RIB:   drawScene(1,{showPhoto:true, mirrorOff:{dx:-1.05*ribbonP, dy:0.72*ribbonP, alpha:Math.max(0,1-ribbonP*1.15), scale:1-0.55*ribbonP}}); break;
+    case P.MTREM: drawScene(0,{showPhoto:!!photo.url, mirrorOff:{dx:0, dy:mirJit/H, alpha:1, scale:1}}); break;
+    case P.RIB:   drawScene(1,{showPhoto:true}); break;
     case P.DOOR:  drawScene(2,{showPhoto:false}); break;
     case P.YARN:
     case P.FINAL: drawScene(3,{showPhoto:false, yarnTint}); break;
@@ -262,21 +303,20 @@ async function runAll(replay){
     // 镜子颤抖等点击 → 拍照/上传 → 顾客确认后才继续
     let uploaded=false;
     while(!uploaded){
-      await begin(P.MTREM); hint('镜子有话对你说','点一下镜子 →');
+      await begin(P.MTREM); hint(null);
       await waitMirrorClick();
       const r=await shootFlow();
       uploaded=(r==='ok');
     }
-    // 衣服已入镜：立即显示照片，同时后台开始 AI（段2/段3 期间分析）
-    await begin(P.MTREM);
-    hint('衣服已经放进镜子里了','✨ AI 正在辨认你的衣服…');
-    analyzePromise=runAI();
-    await sleep(1800);
+    analyzePromise=runAI();   // 后台 AI（段2/段3 期间分析，不显示提示）
   }
-  // 丝带②（镜带照片漂向坐下消失）
+  // 丝带②
   await begin(P.RIB); hint(null);
+  const glitter=SEG[1].find(l=>l.kind==='gif'&&l.gif==='glitter');
+  if(glitter) playGifLayer(glitter, Infinity);
   const rib=SEG[1].find(l=>l.kind==='gif'&&l.gif==='ribbon');
-  if(rib) await ribbonOnce(rib); else await sleep(2200);
+  if(rib) await playOnce(rib); else await sleep(2200);
+  if(glitter) stopGifLayer(glitter.id);
   // 颤柜 → 开门（段3：门先定格在关闭→颤→开）
   await begin(P.DOOR); hint(null); SFX.play('tremble');
   const door=SEG[2].find(l=>l.kind==='gif'&&l.gif==='cabinet_open');
@@ -302,19 +342,12 @@ function resetAll(replay){
   clearFX(); hint(null); bottom(null); hideCam(); hideAI();
   if(!replay){ AI=null; photo={url:null,name:null,img:null,crop:null}; }
   yarnTint={};
-  ribbonP=0; mirOn=false; mirJit=0; tremble=0; skipGif.clear();
+  mirOn=false; mirJit=0; tremble=0; skipGif.clear();
   for(const k in gifState) delete gifState[k];
+  for(const k in SVGIMG) delete SVGIMG[k];
   $('aiLoading').classList.add('hidden');
 }
 function playOnce(L){ return new Promise(res=>{ playGifLayer(L,1,res); }); }
-async function ribbonOnce(L){
-  return new Promise(res=>{
-    const dur=sumDelays(L.gif,L.f0,L.f1,L.speed);
-    const t0=performance.now();
-    const iv=setInterval(()=>{ ribbonP=Math.min(1,(performance.now()-t0)/dur); },33);
-    playGifLayer(L,1,()=>{ clearInterval(iv); ribbonP=1; res(); });
-  });
-}
 
 /* 等点击（命中镜子区域） */
 function mirrorBox(){ const L=SEG[0].find(l=>l.id==='mirror'); return L; }
@@ -338,10 +371,8 @@ function waitMirrorClick(){
 /* ---------- 拍照流程 ---------- */
 function shootFlow(){
   if(DEMO){
-    // 演示也要展示“上传衣服”这一步（自动使用示例照片）
-    $('camOverlay').classList.remove('hidden');
-    $('camTitle').textContent='演示模式 · 自动使用示例照片…';
-    return new Promise(res=>{ setTimeout(()=>{ hideCam(); makeDemoPhoto().then(()=>res('ok')); },1000); });
+    toast('演示模式 · 自动使用示例照片');
+    return makeDemoPhoto().then(()=>'ok');
   }
   return showCam();
 }
@@ -460,6 +491,9 @@ async function yarnFlow(){
   yarns.forEach((L,i)=>{ const hex=(AI.colors[i%3]||{}).hex; if(hex) yarnTint[L.id]=hex; });
   // 三瓶先冻结在起始帧
   yarns.forEach(L=>{ gifState[L.id]={f:start,acc:0,play:false,start,end,loops:1,cb:null}; });
+  // 用矢量 SVG 帧（fill 染色），播放期零 CPU，不闪不卡
+  await ensureSvgFrames();
+  hint(null);
   const level=yarns.map(()=>0);
   const seg=(AI.segLines||[]).slice(0,5);
   while(seg.length<5) seg.push({t:'',s:'',bottle:-1});
@@ -502,7 +536,7 @@ function balanceBottles(a,fallback){
   }
 }
 function animateYarnStep(L,fromF,toF,durMs){
-  const gif=L.gif, hex=yarnTint[L.id], m=META[gif];
+  const m=META[L.gif];
   const maxF=m?m.frames-1:0;
   return new Promise(res=>{
     const t0=performance.now();
@@ -511,8 +545,6 @@ function animateYarnStep(L,fromF,toF,durMs){
       const e=p<0.5?2*p*p:1-Math.pow(-2*p+2,2)/2;   // easeInOut 平滑
       const f=Math.round(fromF+(toF-fromF)*e);
       gifState[L.id].f=Math.max(0,Math.min(maxF,f));
-      // 只预热下一帧染色（均衡负载，消除卡顿）
-      if(hex){ const nf=Math.min(maxF, gifState[L.id].f+3); tintedCanvas(getFrame(gif,nf),hex); }
       if(p<1) requestAnimationFrame(tick); else res();
     })();
   });
@@ -545,38 +577,74 @@ function showSpiceTags(){
    摄像头
    ============================================================ */
 let camStream=null;
+// 镜子从中心向外扩散消失、露出镜头：给 camOverlay 套一个从镜子中心扩张的径向遮罩
+function mirrorWipe(){
+  return new Promise(res=>{
+    const ov=$('camOverlay');
+    const r=canvasRect();
+    const L=SEG[0].find(l=>l.id==='mirror');
+    const mir=L&&IMGS[L.src];
+    const mw=(L?L.w/100*W:0), mh=mw*(mir?mir.height/mir.width:1.6);
+    const cx=r.left + (L?L.x/100*W:0) + mw/2;
+    const cy=r.top + (L?L.y/100*H:0) + mh/2;
+    const diag=Math.hypot(window.innerWidth, window.innerHeight);
+    ov.classList.add('wiping');
+    ov.style.setProperty('--cx', cx.toFixed(1)+'px');
+    ov.style.setProperty('--cy', cy.toFixed(1)+'px');
+    ov.style.setProperty('--r', '0px');
+    const t0=performance.now(), dur=850;
+    (function tick(){
+      const p=Math.min(1,(performance.now()-t0)/dur);
+      const e=1-Math.pow(1-p,3);   // easeOut 扩散
+      ov.style.setProperty('--r', (diag*e).toFixed(1)+'px');
+      if(p<1) requestAnimationFrame(tick);
+      else { ov.classList.remove('wiping'); ov.style.setProperty('--r','0px'); res(); }
+    })();
+  });
+}
 function showCam(){
   return new Promise(resolve=>{
-    const ov=$('camOverlay'); ov.classList.remove('hidden');
-    const v=$('video'), shot=$('photoShot'), guide=$('personGuide');
-    const s1=$('btnShoot'), rk=$('btnRetake'), ok=$('btnOk'), pk=$('btnPickFile');
-    const resetUI=()=>{ s1.classList.remove('hidden'); s1.classList.add('big'); rk.classList.add('hidden'); ok.classList.add('hidden'); ok.classList.remove('ok'); shot.classList.add('hidden'); v.classList.remove('hidden'); guide.style.display='block'; $('countdown').classList.add('hidden'); s1.disabled=false; };
-    resetUI();
-    const done=()=>{ hideCam(); resolve('ok'); };
-    s1.onclick=async()=>{ s1.disabled=true; const cd=$('countdown'),num=$('countNum'); cd.classList.remove('hidden');
-      for(let i=3;i>=1;i--){ num.textContent=i; num.style.animation='none'; void num.offsetWidth; num.style.animation=''; await sleep(650); }
-      await stopCam(); cd.classList.add('hidden');
-      shot.width=v.videoWidth||640; shot.height=v.videoHeight||480;
-      shot.getContext('2d').drawImage(v,0,0,shot.width,shot.height);
-      shot.classList.remove('hidden'); v.classList.add('hidden'); guide.style.display='none';
-      s1.classList.add('hidden'); rk.classList.remove('hidden'); ok.classList.remove('hidden'); ok.classList.add('ok'); };
-    rk.onclick=()=>{ shot.classList.add('hidden'); ok.classList.add('hidden'); rk.classList.add('hidden'); s1.classList.remove('hidden'); startCam(); };
-    ok.onclick=()=>{ const c=shot; acceptImage(c.toDataURL('image/jpeg',0.9),()=>done()); };
-    pk.onclick=()=>$('fileInput').click();
-    $('fileInput').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>acceptImage(rd.result,()=>done()); rd.readAsDataURL(f); };
-    $('camClose').onclick=async()=>{ await stopCam(); ov.classList.add('hidden'); resolve('cancelled'); };
-    $('camTitle').textContent='把你的衣服放进镜子里';
-    startCam();
+    const ov=$('camOverlay'), v=$('video'), shot=$('photoShot');
+    const cd=$('countdown'), num=$('countNum'), arc=$('cdArc');
+    const doneBox=$('camDone'), ok=$('btnOk'), rk=$('btnRetake'), close=$('camClose');
+    ov.classList.remove('hidden');
+    let busy=false;
+    const finish=()=>{ hideCam(); resolve('ok'); };
+    const restartRing=()=>{ arc.style.animation='none'; void arc.offsetWidth; arc.style.animation=''; };
+    async function shoot(first){
+      if(busy) return; busy=true;
+      shot.classList.add('hidden'); v.classList.remove('hidden'); doneBox.classList.add('hidden');
+      const okCam=await startCam();
+      if(!okCam){ toast('摄像头不可用，请允许权限后重拍'); busy=false; return; }
+      if(first) await mirrorWipe();   // 镜子从中心向外扩散消失，露出镜头
+      cd.classList.remove('hidden');
+      for(let i=3;i>=1;i--){ num.textContent=i; restartRing(); await sleep(900); }
+      cd.classList.add('hidden');
+      // 先按竖屏构图把视频画进 shot，再关摄像头（关后再画会黑屏）
+      const vw=v.videoWidth||640, vh=v.videoHeight||480;
+      const aspect=1200/1703;               // 竖屏取景比例，与取景框一致
+      let sw=vw, sh=vh;
+      if(vw/vh>aspect){ sw=vh*aspect; } else { sh=vw/aspect; }
+      const sx=(vw-sw)/2, sy=(vh-sh)/2;
+      shot.width=Math.max(2,Math.round(sw)); shot.height=Math.max(2,Math.round(sh));
+      shot.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, shot.width, shot.height);
+      await stopCam();
+      v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
+      busy=false;
+    }
+    ok.onclick=()=>{ acceptImage(shot.toDataURL('image/jpeg',0.9), finish); };
+    rk.onclick=()=>shoot(false);
+    close.onclick=async()=>{ await stopCam(); ov.classList.add('hidden'); resolve('cancelled'); };
+    shoot(true);
   });
 }
 async function startCam(){
   const v=$('video');
-  try{ camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},audio:false});
-    v.srcObject=camStream; await v.play(); }
-  catch(e){ console.warn('[cam fallback]',e);
-    // 不自动弹文件框(可能被浏览器拦截)，改为提示用户从相册选
-    $('camTitle').textContent='摄像头不可用 · 请点下方「从相册选择」';
-  }
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},audio:false});
+    v.srcObject=camStream; await v.play();
+    return true;
+  }catch(e){ console.warn('[cam]',e); return false; }
 }
 async function stopCam(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } }
 function acceptImage(url,onReady){
@@ -651,8 +719,10 @@ window.PLAY=PLAY;
   SEG=CFG.seg.map(s=>clone(s.layers));
   // 让丝带段(1)也带照片层（跟随它的镜；拍摄后镜内显示衣物照并随镜消失）
   const ph=SEG[0].find(l=>l.kind==='photo');
-  if(ph && SEG[1].some(l=>l.id==='mirror'&&l.vis!==false) && !SEG[1].some(l=>l.kind==='photo')){
-    SEG[1].push(clone(ph));
+  if(ph && !SEG[1].some(l=>l.kind==='photo')){
+    const mi=SEG[1].findIndex(l=>l.id==='mirror'&&l.vis!==false);
+    if(mi>=0) SEG[1].splice(mi+1,0,clone(ph));   // 照片紧跟镜子，丝带/闪粉在照片之上
+    else SEG[1].push(clone(ph));
   }
   raf=requestAnimationFrame(loop);
   // 猫眼门放行后才真正开始
