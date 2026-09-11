@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
 const GIFTOTAL={smoke:21,ribbon:47,cabinet_open:9,yarn_liquid:530,glitter:315};
 const GIFDELAY={}; // gifKey -> [delays]
-const ASSETV='4';  // 素材版本号：换了 GIF/meta 就 +1，强制刷新缓存
+const ASSETV='5';  // 素材版本号：换了 GIF/meta 就 +1，强制刷新缓存
 
 /* ---- 四个时间段 ---- */
 const SEG=[

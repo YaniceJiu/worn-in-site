@@ -25,7 +25,7 @@ const DEMO=location.search.includes('demo');
 /* ---------- 通用 ---------- */
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function loadImg(url){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=url;});}
-const GIFV='4';
+const GIFV='5';
 function frameURL(gif,f){return 'assets/gifs/'+gif+'/frames/f'+String(f).padStart(4,'0')+'.png?v='+GIFV;}
 function getFrame(gif,f){const k=gif+'_'+f;if(!FRAMES[k]){const im=new Image();im.onload=()=>{const e=FRAMES[k]; if(e) e.ready=true;};im.src=frameURL(gif,f);FRAMES[k]=im;}return FRAMES[k];}
 function sumDelays(gif,f0,f1,speed){
