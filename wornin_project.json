@@ -31,7 +31,7 @@
      "id": "photo",
      "kind": "photo",
      "label": "衣物照(镜内)",
-     "vis": true,
+     "vis": false,
      "follow": true,
      "mx": 9.2,
      "my": 6.2,
@@ -195,6 +195,9 @@
    "bgX": -3,
    "bgY": -2.5,
    "bgW": 106.5,
+   "grpX": -11.5,
+   "grpY": 11,
+   "grpW": 176.5,
    "layers": [
     {
      "id": "cabzoom",
@@ -211,9 +214,9 @@
      "kind": "gif",
      "label": "毛线球→液体 ①",
      "gif": "yarn_liquid",
-     "x": 22,
-     "y": 14,
-     "w": 16,
+     "x": 19,
+     "y": 14.5,
+     "w": 15,
      "vis": true,
      "cropX": 0,
      "cropY": 0,
@@ -253,9 +256,9 @@
      "kind": "gif",
      "label": "毛线球→液体 ③",
      "gif": "yarn_liquid",
-     "x": 58,
-     "y": 14,
-     "w": 16,
+     "x": 61.5,
+     "y": 14.5,
+     "w": 15,
      "vis": true,
      "cropX": 0,
      "cropY": 0,
@@ -269,10 +272,7 @@
      "cutR": 0,
      "cutB": 0
     }
-   ],
-   "grpX": 0,
-   "grpY": 0,
-   "grpW": 100
+   ]
   }
  ],
  "photo": "示例照片"

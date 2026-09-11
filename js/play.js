@@ -127,19 +127,18 @@ function drawYarnSVG(L,f,hex){
   const bf=Math.min(51,Math.max(0,Math.round(f*51/end)));
   const lf=Math.min(49,Math.max(0,Math.round(f*49/end)));
   const bim=svgImg('ball',bf,hex), lim=svgImg('liquid',lf,hex);
-  const bxc=ddx+dw/2;
-  // 球：按瓶宽的百分比（ballW 大小、ballY 向下偏移）
+  // 球：ballX 中心横向偏移、ballY 向下、ballW 大小（单位均为瓶宽 %）
   const bw=((L.ballW!=null?L.ballW:62)/100)*dw;
+  const bxc=ddx+((L.ballX!=null?L.ballX:50)/100)*dw;
   if(bim&&bim.complete&&bim.naturalWidth){
-    const bx=bxc-bw/2, by=ddy+((L.ballY!=null?L.ballY:0)/100)*dw;
-    ctx.drawImage(bim, bx, by, bw, bw);
+    ctx.drawImage(bim, bxc-bw/2, ddy+((L.ballY!=null?L.ballY:0)/100)*dw, bw, bw);
   }
-  // 液面：按瓶宽的百分比（liqW 宽、liqY 向下偏移）
+  // 液面：liqX 中心横向偏移、liqY 向下、liqW 宽（单位均为瓶宽 %）
   const lw=((L.liqW!=null?L.liqW:96)/100)*dw;
+  const lxc=ddx+((L.liqX!=null?L.liqX:50)/100)*dw;
   if(lim&&lim.complete&&lim.naturalWidth){
     const lh=lw*(378/352);
-    const lx=bxc-lw/2, ly=ddy+((L.liqY!=null?L.liqY:45)/100)*dw;
-    ctx.drawImage(lim, lx, ly, lw, lh);
+    ctx.drawImage(lim, lxc-lw/2, ddy+((L.liqY!=null?L.liqY:45)/100)*dw, lw, lh);
   }
 }
 

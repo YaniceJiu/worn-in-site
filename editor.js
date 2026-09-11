@@ -116,11 +116,14 @@ function drawYarnSVG(L,f,hex){
   const bf=Math.min(51,Math.max(0,Math.round(f*51/end)));
   const lf=Math.min(49,Math.max(0,Math.round(f*49/end)));
   const bim=svgImg('ball',bf,hex), lim=svgImg('liquid',lf,hex);
-  const bxc=ddx+dw/2;
+  // 球：ballX 中心横向偏移、ballY 向下、ballW 大小（单位均为瓶宽 %）
   const bw=((L.ballW!=null?L.ballW:62)/100)*dw;
+  const bxc=ddx+((L.ballX!=null?L.ballX:50)/100)*dw;
   if(bim&&bim.complete&&bim.naturalWidth){ ctx.drawImage(bim, bxc-bw/2, ddy+((L.ballY!=null?L.ballY:0)/100)*dw, bw, bw); }
+  // 液面：liqX 中心横向偏移、liqY 向下、liqW 宽（单位均为瓶宽 %）
   const lw=((L.liqW!=null?L.liqW:96)/100)*dw;
-  if(lim&&lim.complete&&lim.naturalWidth){ const lh=lw*(378/352); ctx.drawImage(lim, bxc-lw/2, ddy+((L.liqY!=null?L.liqY:45)/100)*dw, lw, lh); }
+  const lxc=ddx+((L.liqX!=null?L.liqX:50)/100)*dw;
+  if(lim&&lim.complete&&lim.naturalWidth){ const lh=lw*(378/352); ctx.drawImage(lim, lxc-lw/2, ddy+((L.liqY!=null?L.liqY:45)/100)*dw, lw, lh); }
 }
 
 /* ---- 绘制一层 ---- */
@@ -265,7 +268,17 @@ function buildPanel(){
         add(sliderRow('Y %',+(L.y).toFixed(1),-500,500,0.5,v=>{L.y=v;}));
         add(sliderRow('宽 %',+(L.w).toFixed(1),1,1000,0.5,v=>{L.w=v;}));
       }
-      if(L.kind==='gif'){
+      if(L.kind==='gif' && L.id.startsWith('yarn')){
+        const wrap=document.createElement('div'); wrap.className='giftitle';
+        wrap.textContent='— 毛球 / 液面 —'; el.appendChild(wrap);
+        add(sliderRow('球 X %',+(L.ballX!=null?L.ballX:50).toFixed(1),-100,200,0.5,v=>L.ballX=v));
+        add(sliderRow('球 Y %',+(L.ballY!=null?L.ballY:0).toFixed(1),-200,200,0.5,v=>L.ballY=v));
+        add(sliderRow('球大小 %',+(L.ballW!=null?L.ballW:62).toFixed(1),1,200,0.5,v=>L.ballW=v));
+        add(sliderRow('液 X %',+(L.liqX!=null?L.liqX:50).toFixed(1),-100,200,0.5,v=>L.liqX=v));
+        add(sliderRow('液 Y %',+(L.liqY!=null?L.liqY:45).toFixed(1),-200,200,0.5,v=>L.liqY=v));
+        add(sliderRow('液宽 %',+(L.liqW!=null?L.liqW:96).toFixed(1),1,200,0.5,v=>L.liqW=v));
+      }
+      else if(L.kind==='gif'){
         const wrap=document.createElement('div'); wrap.className='giftitle';
         wrap.textContent='— GIF 裁切 / 帧 / 速度 —'; el.appendChild(wrap);
         cropToCut(L);
