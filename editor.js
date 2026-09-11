@@ -82,6 +82,47 @@ function bgSize(){
 }
 const pxw=()=>cv.width, pxh=()=>cv.height;
 
+/* ---- 段4：矢量 SVG 帧 + fill 染色（编辑器预览用固定预览色） ---- */
+const SVGFRAMES={ball:[],liquid:[]};
+const SVGIMG={};
+const YARN_PREVIEW=['#f0a6b8','#a8d8b9','#9cc2e8'];
+async function loadSvgFrames(){
+  const load=(folder,n,arr)=>{
+    const prefix = folder==='yarn_ball' ? 'yarn_ball_' : 'liquid_';
+    const tasks=[];
+    for(let i=0;i<n;i++){
+      const name=prefix+String(i+1).padStart(2,'0');
+      tasks.push(fetch('assets/svg/'+folder+'/'+name+'.svg?v='+ASSETV).then(r=>r.text()).then(t=>{arr[i]=t;}).catch(()=>{}));
+    }
+    return Promise.all(tasks);
+  };
+  await Promise.all([load('yarn_ball',52,SVGFRAMES.ball), load('liquid',50,SVGFRAMES.liquid)]);
+}
+function svgImg(base,f,hex){
+  const key=base+'|'+(hex||'')+'|'+f;
+  if(SVGIMG[key]) return SVGIMG[key];
+  let t=SVGFRAMES[base]&&SVGFRAMES[base][f]; if(!t) return null;
+  if(hex){ t=t.replace(/fill="#(?:ffffff|f4f1e9)"/gi,'fill="'+hex+'"'); }
+  const url=URL.createObjectURL(new Blob([t],{type:'image/svg+xml'}));
+  const im=new Image(); im.src=url; SVGIMG[key]=im;
+  return im;
+}
+function drawYarnSVG(L,f,hex){
+  const s=SEG[3];
+  const gx=s.grpX||0, gy=s.grpY||0, gs=(s.grpW!=null?s.grpW:100)/100;
+  const dw=(L.w*gs)/100*cv.width;
+  const ddx=(L.x+gx)/100*cv.width, ddy=(L.y+gy)/100*cv.height;
+  const end=GIFTOTAL['yarn_liquid']-1||529;
+  const bf=Math.min(51,Math.max(0,Math.round(f*51/end)));
+  const lf=Math.min(49,Math.max(0,Math.round(f*49/end)));
+  const bim=svgImg('ball',bf,hex), lim=svgImg('liquid',lf,hex);
+  const bxc=ddx+dw/2;
+  const bw=((L.ballW!=null?L.ballW:62)/100)*dw;
+  if(bim&&bim.complete&&bim.naturalWidth){ ctx.drawImage(bim, bxc-bw/2, ddy+((L.ballY!=null?L.ballY:0)/100)*dw, bw, bw); }
+  const lw=((L.liqW!=null?L.liqW:96)/100)*dw;
+  if(lim&&lim.complete&&lim.naturalWidth){ const lh=lw*(378/352); ctx.drawImage(lim, bxc-lw/2, ddy+((L.liqY!=null?L.liqY:45)/100)*dw, lw, lh); }
+}
+
 /* ---- 绘制一层 ---- */
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function drawLayer(L){
@@ -116,6 +157,11 @@ function drawLayer(L){
   }else if(L.kind==='gif'){
     const g=GIFTOTAL[L.gif]; if(!g) return;
     const fi=(gifAnim[L.id]&&gifAnim[L.id].f)||0;
+    if(L.id.startsWith('yarn') && SVGFRAMES.ball.length){
+      const idx=parseInt((String(L.id).match(/\d+$/)||['1'])[0],10)||1;
+      drawYarnSVG(L, fi, YARN_PREVIEW[(idx-1)%3]);
+      return;
+    }
     const im=getFrame(L.gif, fi);
     if(!im.complete||!im.naturalWidth) return;
     const fw=im.naturalWidth, fh=im.naturalHeight;
@@ -195,6 +241,15 @@ function buildPanel(){
     bgEl.appendChild(sliderRow('Y %',+(s.bgY||0).toFixed(1),-100,200,0.5,v=>{s.bgY=v;}));
     bgEl.appendChild(sliderRow('宽 %',+(s.bgW!=null?s.bgW:100).toFixed(1),1,400,0.5,v=>{s.bgW=v;}));
     box.appendChild(bgEl);
+  }
+  if(seg===3){
+    const s=SEG[3];
+    const grp=document.createElement('div'); grp.className='layer';
+    grp.innerHTML=`<div class="lhead"><b>🧶 毛球组（整体）</b><span>①②③ 一起动</span></div>`;
+    grp.appendChild(sliderRow('整体 X %',+(s.grpX||0).toFixed(1),-300,300,0.5,v=>{s.grpX=v;}));
+    grp.appendChild(sliderRow('整体 Y %',+(s.grpY||0).toFixed(1),-300,300,0.5,v=>{s.grpY=v;}));
+    grp.appendChild(sliderRow('整体缩放 %',+(s.grpW!=null?s.grpW:100).toFixed(1),10,500,0.5,v=>{s.grpW=v;}));
+    box.appendChild(grp);
   }
   SEG[seg].layers.forEach((L,idx)=>{
     const el=document.createElement('div'); el.className='layer'+(idx===sel?' sel':'');
@@ -298,7 +353,7 @@ function bindTools(){
   $('btnPlay').onclick=()=>{playing=!playing; $('btnPlay').textContent=playing?'⏸ 暂停预览':'▶ 播放预览';};
   $('btnSave').onclick=async()=>{
     saveAll();
-    const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,bgX:s.bgX,bgY:s.bgY,bgW:s.bgW,layers:s.layers})), photo:photo.name};
+    const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,bgX:s.bgX,bgY:s.bgY,bgW:s.bgW,grpX:s.grpX,grpY:s.grpY,grpW:s.grpW,layers:s.layers})), photo:photo.name};
     try{
       const r=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data,null,1)});
       if(r.ok) toast('已保存到工程 wornin_project.json ✓');
@@ -306,7 +361,7 @@ function bindTools(){
     }catch(e){ toast('保存接口不可用，请用「导出配置 JSON」手动覆盖'); }
   };
   $('btnExport').onclick=()=>{
-    const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,bgX:s.bgX,bgY:s.bgY,bgW:s.bgW,layers:s.layers})), photo:photo.name};
+    const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,bgX:s.bgX,bgY:s.bgY,bgW:s.bgW,grpX:s.grpX,grpY:s.grpY,grpW:s.grpW,layers:s.layers})), photo:photo.name};
     const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,1));
     a.download='wornin_project.json';a.click();
   };
@@ -315,7 +370,7 @@ function bindTools(){
     const f=e.target.files[0]; if(!f) return;
     const rd=new FileReader(); rd.onload=()=>{
       try{ const d=JSON.parse(rd.result); if(d.seg&&d.seg.length===SEG.length){
-        d.seg.forEach((s,i)=>{ if(s.layers) SEG[i].layers=mergeLayers(s.layers,SEG[i].layers); SEG[i].bgX=s.bgX!=null?s.bgX:0; SEG[i].bgY=s.bgY!=null?s.bgY:0; SEG[i].bgW=s.bgW!=null?s.bgW:100; });
+        d.seg.forEach((s,i)=>{ if(s.layers) SEG[i].layers=mergeLayers(s.layers,SEG[i].layers); SEG[i].bgX=s.bgX!=null?s.bgX:0; SEG[i].bgY=s.bgY!=null?s.bgY:0; SEG[i].bgW=s.bgW!=null?s.bgW:100; SEG[i].grpX=s.grpX!=null?s.grpX:0; SEG[i].grpY=s.grpY!=null?s.grpY:0; SEG[i].grpW=s.grpW!=null?s.grpW:100; });
         buildPanel(); toast('已导入并合并配置 ✓');
       } }catch(err){ alert('导入失败'); }
     }; rd.readAsText(f);
@@ -349,6 +404,9 @@ async function loadConfig(){
         if(s.bgX!=null) SEG[i].bgX=s.bgX;
         if(s.bgY!=null) SEG[i].bgY=s.bgY;
         if(s.bgW!=null) SEG[i].bgW=s.bgW;
+        if(s.grpX!=null) SEG[i].grpX=s.grpX;
+        if(s.grpY!=null) SEG[i].grpY=s.grpY;
+        if(s.grpW!=null) SEG[i].grpW=s.grpW;
       });
     }
   }catch(e){ console.warn('[config]',e); }
@@ -374,6 +432,7 @@ function makePlaceholderPhoto(){
   await preloadStatic();
   await loadMeta();
   await loadConfig();
+  loadSvgFrames();
   if(!photo.url) makePlaceholderPhoto();
   buildPanel(); segTabs(); bindTools(); bgSize();
   requestAnimationFrame(step);

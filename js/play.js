@@ -97,15 +97,16 @@ function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,
 /* ---- 段4：毛球/液面用矢量 SVG 帧 + fill 染色（丝滑、不卡、不闪） ---- */
 let svgLoadPromise=null;
 async function loadSvgFrames(){
-  const load=(base,n,arr)=>{
+  const load=(folder,n,arr)=>{
+    const prefix = folder==='yarn_ball' ? 'yarn_ball_' : 'liquid_';
     const tasks=[];
     for(let i=0;i<n;i++){
-      const name=base==='ball' ? 'yarn_ball_'+String(i+1).padStart(2,'0') : 'liquid_'+String(i+1).padStart(2,'0');
-      tasks.push(fetch('assets/svg/'+base+'/'+name+'.svg?v='+GIFV).then(r=>r.text()).then(t=>{arr[i]=t;}).catch(()=>{}));
+      const name=prefix+String(i+1).padStart(2,'0');
+      tasks.push(fetch('assets/svg/'+folder+'/'+name+'.svg?v='+GIFV).then(r=>r.text()).then(t=>{arr[i]=t;}).catch(()=>{}));
     }
     return Promise.all(tasks);
   };
-  await Promise.all([load('ball',52,SVGFRAMES.ball), load('liquid',50,SVGFRAMES.liquid)]);
+  await Promise.all([load('yarn_ball',52,SVGFRAMES.ball), load('liquid',50,SVGFRAMES.liquid)]);
 }
 function ensureSvgFrames(){ if(!svgLoadPromise) svgLoadPromise=loadSvgFrames(); return svgLoadPromise; }
 function svgImg(base,f,hex){
@@ -118,26 +119,26 @@ function svgImg(base,f,hex){
   return im;
 }
 function drawYarnSVG(L,f,hex){
-  const dx=L.x/100*W, dy=L.y/100*H, dw=L.w/100*W;
-  const cx=L.cropX||0, cy=L.cropY||0, cw=L.cropW==null?100:L.cropW, ch=L.cropH==null?100:L.cropH;
-  const dh=dw*(1080/1920);
-  const ddx=dx+cx/100*dw, ddy=dy+cy/100*dh, ddw=cw/100*dw, ddh=ch/100*dh;
+  const s=CFG.seg[3];
+  const gx=s.grpX||0, gy=s.grpY||0, gs=(s.grpW!=null?s.grpW:100)/100;
+  const dw=(L.w*gs)/100*W;                    // 瓶宽（受整体缩放）
+  const ddx=(L.x+gx)/100*W, ddy=(L.y+gy)/100*H;   // 瓶左上角（受整体偏移）
   const ga=gifState[L.id], end=(ga&&ga.end)||529;
   const bf=Math.min(51,Math.max(0,Math.round(f*51/end)));
   const lf=Math.min(49,Math.max(0,Math.round(f*49/end)));
   const bim=svgImg('ball',bf,hex), lim=svgImg('liquid',lf,hex);
-  const bxc=ddx+ddw/2;
-  // 球：瓶子顶部（可在配置 ballX/ballY/ballW 微调）
-  const bw=((L.ballW!=null?L.ballW:62)/100)*ddw;
+  const bxc=ddx+dw/2;
+  // 球：按瓶宽的百分比（ballW 大小、ballY 向下偏移）
+  const bw=((L.ballW!=null?L.ballW:62)/100)*dw;
   if(bim&&bim.complete&&bim.naturalWidth){
-    const bx=bxc-bw/2, by=ddy+((L.ballY!=null?L.ballY:10)/100)*ddh;
+    const bx=bxc-bw/2, by=ddy+((L.ballY!=null?L.ballY:0)/100)*dw;
     ctx.drawImage(bim, bx, by, bw, bw);
   }
-  // 液面：球下方（可在配置 liqX/liqY/liqW 微调）
-  const lw=((L.liqW!=null?L.liqW:96)/100)*ddw;
+  // 液面：按瓶宽的百分比（liqW 宽、liqY 向下偏移）
+  const lw=((L.liqW!=null?L.liqW:96)/100)*dw;
   if(lim&&lim.complete&&lim.naturalWidth){
     const lh=lw*(378/352);
-    const lx=bxc-lw/2, ly=ddy+((L.liqY!=null?L.liqY:32)/100)*ddh;
+    const lx=bxc-lw/2, ly=ddy+((L.liqY!=null?L.liqY:45)/100)*dw;
     ctx.drawImage(lim, lx, ly, lw, lh);
   }
 }
