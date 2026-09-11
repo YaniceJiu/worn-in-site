@@ -24,7 +24,8 @@ const DEMO=location.search.includes('demo');
 
 /* ---------- 通用 ---------- */
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
-function loadImg(url){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=url;});}
+function loadImg(url){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=url+(url.includes('?')?'':'?v='+MATV);});}
+const MATV='2';
 const GIFV='5';
 function frameURL(gif,f){return 'assets/gifs/'+gif+'/frames/f'+String(f).padStart(4,'0')+'.png?v='+GIFV;}
 function getFrame(gif,f){const k=gif+'_'+f;if(!FRAMES[k]){const im=new Image();im.onload=()=>{const e=FRAMES[k]; if(e) e.ready=true;};im.src=frameURL(gif,f);FRAMES[k]=im;}return FRAMES[k];}
@@ -300,11 +301,11 @@ async function runAll(replay){
     // 重播：保留照片与结果，跳过点击/拍照/AI
     await begin(P.MTREM); hint('旧衣新香，再次为你调香…','✨'); await sleep(1600);
   }else{
-    // 镜子颤抖等点击 → 拍照/上传 → 顾客确认后才继续
+    // 烟雾后镜子漂浮片刻 → 自动从中心溶解露出镜头 → 倒计时拍照（无需点击）
     let uploaded=false;
     while(!uploaded){
       await begin(P.MTREM); hint(null);
-      await waitMirrorClick();
+      mirOn=true; await sleep(2000); mirOn=false;
       const r=await shootFlow();
       uploaded=(r==='ok');
     }
@@ -585,8 +586,9 @@ function mirrorWipe(){
     const L=SEG[0].find(l=>l.id==='mirror');
     const mir=L&&IMGS[L.src];
     const mw=(L?L.w/100*W:0), mh=mw*(mir?mir.height/mir.width:1.6);
-    const cx=r.left + (L?L.x/100*W:0) + mw/2;
-    const cy=r.top + (L?L.y/100*H:0) + mh/2;
+    const sx=r.width/W, sy=r.height/H;   // 画布→屏幕缩放
+    const cx=r.left + ((L?L.x/100*W:0)+mw/2)*sx;
+    const cy=r.top  + ((L?L.y/100*H:0)+mh/2)*sy;
     const diag=Math.hypot(window.innerWidth, window.innerHeight);
     ov.classList.add('wiping');
     ov.style.setProperty('--cx', cx.toFixed(1)+'px');

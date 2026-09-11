@@ -29,6 +29,8 @@ let isClose = false, excite = 0;
 let happy = false, happyUntil = 0, unlocking = false;
 let faceDetector = null, camOk = false;
 let lastFace = null;
+let lastCloseAt = performance.now();  // 最近一次有人靠近的时间戳
+let drowsy = false, drowsyStart = 0;  // 打瞌睡待机动画
 
 const video = document.createElement('video');
 video.muted = true; video.playsInline = true; video.autoplay = true;
@@ -381,6 +383,12 @@ function loop(t){
     targetY = Math.sin(s * 0.8 + 1) * 0.25;
   }
 
+  if(isClose){ lastCloseAt = t; if(drowsy) drowsy = false; }
+  if(!happy && !unlocking && !drowsy && t - lastCloseAt > 5000){ drowsy = true; drowsyStart = t; }
+  if(drowsy && t - drowsyStart > 2000) drowsy = false;
+
+  if(drowsy) targetY = 0.45;   // 打瞌睡：视线下垂
+
   lookX += (targetX - lookX) * 0.22;
   lookY += (targetY - lookY) * 0.22;
   excite += ((isClose && !happy ? 1 : 0) - excite) * 0.12;
@@ -390,7 +398,8 @@ function loop(t){
     eyeOpen = 1 - Math.sin(p * Math.PI);
     if(p >= 1) blinking = false;
   } else {
-    eyeOpen = 1;
+    const targetOpen = drowsy ? 0.55 : 1;   // 打瞌睡眯眼
+    eyeOpen += (targetOpen - eyeOpen) * 0.12;
     if(t > nextBlink){
       blinking = true; blinkStart = t; blinkDur = 180;
       nextBlink = t + 2500 + Math.random() * 3000;
