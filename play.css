@@ -87,7 +87,8 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 #aiErr{color:#ff9f8a;margin-top:12px;font-size:14px}
 #aiErr button{display:block;margin:12px auto 0;padding:8px 18px;border:none;border-radius:16px;background:#c9a05c;color:#231a10;cursor:pointer}
 
-#keyPanel{position:fixed;top:10px;right:10px;z-index:70;background:#241f18;border:1px solid #000;border-radius:12px;padding:12px 14px;width:290px;color:#e8dcc8;font-size:12px}
+#keyPanel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:300;background:#241f18;border:1px solid #000;border-radius:14px;padding:18px 18px 16px;width:min(88vw,340px);color:#e8dcc8;font-size:13px;box-shadow:0 18px 60px rgba(0,0,0,.7)}
+#keyPanel #keyClose{margin-left:8px;background:transparent;border:1px solid #5a4f42;color:#cbb99a}
 #keyPanel p{margin-bottom:8px;color:#d9b37a}
 #keyPanel input{width:100%;padding:6px 8px;border:1px solid #4a4134;background:#14110d;color:#eee;border-radius:6px;margin-bottom:8px}
 #keyPanel button{padding:5px 14px;border:none;border-radius:12px;background:#c9a05c;color:#231a10;cursor:pointer}

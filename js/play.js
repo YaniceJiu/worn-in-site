@@ -20,7 +20,7 @@ let SEG=null;
 const IMGS={}, META={}, FRAMES={};
 let photo={url:null,name:null,img:null,crop:null};
 let AI=null;
-const DEMO=location.search.includes('demo');
+const DEMO=false; // demo 已关闭：始终走真实拍照 + 真实 AI（OpenAI key）
 
 /* ---------- 通用 ---------- */
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
@@ -388,12 +388,26 @@ async function waitAI(){
   try{ await analyzePromise; }catch(e){ /* handled in runAI */ }
   hideAI();
 }
+/* ---------- 电脑泵桥接：AI 风格 → 本机 pump_bridge.py → ESP32 泵 ---------- */
+const PUMP_MAP={野性风:1,办公风格:2,甜美少女:3,运动风:4,森系居家:5,'晚礼服/名媛':6};
+const PUMP_URL='/pump'; // 同源：本机或局域网其它设备打开，都打到这台电脑的 server.py
+async function sendToPump(style){
+  const pump=PUMP_MAP[style];
+  if(!pump){ console.warn('[pump] 未知风格:', style); return; }
+  try{
+    const r=await fetch(PUMP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({style,pump})});
+    const j=await r.json();
+    console.log('[pump]', j);
+    if(j&&j.ok) toast('已通知调香机：'+style+' → '+pump+' 号泵');
+  }catch(e){ console.warn('[pump] 桥接未启动或串口未接:', e.message); }
+}
 async function runAI(){
   try{ AI = DEMO ? await exampleAI() : await analyzePhoto(); }
   catch(e){
     console.error('[AI]',e);
     AI = await askRetry(e);
   }
+  sendToPump(AI && AI.style);
   return AI;
 }
 function askRetry(e){ return new Promise(res=>{
@@ -408,17 +422,22 @@ function showAILoading(msg){ $('aiLoading').classList.remove('hidden'); $('aiTex
 function ensureKey(){
   const k=getKey(); if(k) return Promise.resolve(k);
   return new Promise(resolve=>{
-    const kp=$('keyPanel'), inp=$('keyInput');
-    kp.classList.remove('hidden'); inp.value=''; inp.focus();
+    const kp=$('keyPanel'), inp=$('keyInput'), closeBtn=$('keyClose');
+    kp.classList.remove('hidden'); inp.value='';
+    // 桌面端自动聚焦；移动端不聚焦，避免一进站就弹键盘挡住画面
+    if(window.matchMedia && window.matchMedia('(pointer:fine)').matches){ try{ inp.focus(); }catch(e){} }
     toast('请先填入 OpenAI API Key（只存本机浏览器）');
     const done=()=>{
       const v=inp.value.trim(); if(!v) return;
       setKey(v);
-      $('keyHint').classList.remove('hidden');
+      const h=$('keyHint'); h.classList.remove('hidden'); setTimeout(()=>h.classList.add('hidden'),1800);
       kp.classList.add('hidden');
       resolve(v);
     };
+    // “稍后”：先关掉继续浏览，等真正需要调 AI 时再弹一次
+    const skip=()=>{ kp.classList.add('hidden'); resolve(''); };
     $('keySave').onclick=done;
+    if(closeBtn) closeBtn.onclick=skip;
     inp.onkeydown=e=>{ if(e.key==='Enter') done(); };
   });
 }
@@ -727,6 +746,8 @@ window.PLAY=PLAY;
     else SEG[1].push(clone(ph));
   }
   raf=requestAnimationFrame(loop);
+  // 首次访问（本机没存过 Key）→ 一打开网站就弹出 Key 输入框，填一次永久记住
+  if(!getKey()) setTimeout(()=>{ ensureKey(); }, 350);
   // 猫眼门放行后才真正开始
   let started=false;
   window.__startWornIn=()=>{ if(started) return; started=true; if(DEMO) toast('演示模式 · 自动跑完整流程'); runAll(false); };

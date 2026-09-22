@@ -3,6 +3,9 @@ frames_check_*/
 assets/ref_guide.png
 scene.html
 js/apikey.js
+certs/
+*.bak
+__pycache__/
 
 assets/tmp/
 assets/mat_preview/
