@@ -1,6 +1,0 @@
-# Stripe 密钥（服务器端，不要提交到公开仓库）
-# 在此文件里粘贴你的 Stripe Secret Key（测试用 sk_test_... 或正式 sk_live_...）
-# 也可以改用环境变量 STRIPE_SECRET_KEY
-#
-# 例如：
-# sk_test_51AbCdEfGhIjKlMnOpQrStUvWxYz0123456789

@@ -7,5 +7,7 @@ certs/
 *.bak
 __pycache__/
 
+stripe_key.txt
+
 assets/tmp/
 assets/mat_preview/

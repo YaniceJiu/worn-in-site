@@ -90,15 +90,16 @@ STRIPE_PRODUCT_NAME = 'Worn-In Perfume'
 
 
 def load_stripe_key():
-    """密钥优先从环境变量 STRIPE_SECRET_KEY 读，其次从 stripe_key.txt 读。"""
+    """密钥优先从环境变量 STRIPE_SECRET_KEY 读，其次从 stripe_key.txt 读（跳过注释/空行）。"""
     k = os.environ.get('STRIPE_SECRET_KEY', '').strip()
     if k:
         return k
     p = os.path.join(ROOT, 'stripe_key.txt')
     if os.path.exists(p):
-        k = open(p, encoding='utf-8').read().strip()
-        if k and not k.startswith('#'):
-            return k
+        for line in open(p, encoding='utf-8'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                return line
     return ''
 
 
