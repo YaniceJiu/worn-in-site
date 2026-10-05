@@ -2,19 +2,18 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
-const GIFTOTAL={smoke:21,ribbon:47,cabinet_open:9,yarn_liquid:530,glitter:315};
+const GIFTOTAL={smoke:21,ribbon:47,cabinet_open:9,yarn_liquid:530,glitter:315,drawer_open:84,card_out:63,bottle_out:63,smoke_mirror:67};
 const GIFDELAY={}; // gifKey -> [delays]
-const ASSETV='5';  // 素材版本号：换了 GIF/meta 就 +1，强制刷新缓存
+const ASSETV='10';  // 素材版本号：换了 GIF/meta 就 +1，强制刷新缓存
 
 /* ---- 四个时间段 ---- */
 const SEG=[
  {id:'seg1',name:'1 · 烟雾飘（上传衣物）',bg:'assets/materials/bg.png',
   layers:[
    {id:'cabinet',kind:'img',label:'柜子',src:'assets/materials/cabinet.png',x:34,y:40,w:20,vis:true},
-   {id:'mirror',kind:'img',label:'镜子',src:'assets/materials/mirror.png',x:58,y:26,w:8,vis:true},
-   {id:'photo',kind:'photo',label:'衣物照(镜内)',vis:false,follow:true,mx:9.2,my:6.2,mw:80.1,mh:73.0,zoom:100},
-   {id:'smoke',kind:'gif',label:'烟雾 GIF',gif:'smoke',x:4,y:14,w:70,vis:true,
-      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1}
+   {id:'mirror',kind:'gif',label:'烟雾+镜子',gif:'smoke_mirror',x:-10.5,y:-23.5,w:123.5,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1},
+   {id:'photo',kind:'photo',label:'衣物照(镜内)',vis:false,follow:true,mx:9.2,my:6.2,mw:80.1,mh:73.0,zoom:100}
   ]},
  {id:'seg2',name:'2 · 丝带飘',bg:'assets/materials/bg.png',
   layers:[
@@ -41,6 +40,28 @@ const SEG=[
       cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1},
    {id:'yarn3',kind:'gif',label:'毛线球→液体 ③',gif:'yarn_liquid',x:30,y:10,w:88,vis:true,
       cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1}
+  ]},
+ {id:'seg5',name:'5 · 取出香卡',bg:'assets/materials/bg.png',
+  layers:[
+   {id:'card',kind:'gif',label:'拿出卡片',gif:'card_out',x:-49,y:12.5,w:211,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1},
+   {id:'yarn4',kind:'gif',label:'毛线球→液体 ①',gif:'yarn_liquid',x:25,y:-2.5,w:13,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:4.3},
+   {id:'yarn5',kind:'gif',label:'毛线球→液体 ②',gif:'yarn_liquid',x:44.5,y:-2.5,w:13.5,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:4.3},
+   {id:'yarn6',kind:'gif',label:'毛线球→液体 ③',gif:'yarn_liquid',x:63,y:-2.5,w:13,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:4.3}
+  ]},
+ {id:'seg6',name:'6 · 取出香水',bg:'assets/materials/bg.png',
+  layers:[
+   {id:'bottle',kind:'gif',label:'拿出香水',gif:'bottle_out',x:-75.5,y:-3.5,w:260,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:1},
+   {id:'yarn4',kind:'gif',label:'毛线球→液体 ①',gif:'yarn_liquid',x:25,y:-2.5,w:13,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:4.3},
+   {id:'yarn5',kind:'gif',label:'毛线球→液体 ②',gif:'yarn_liquid',x:44.5,y:-2.5,w:13.5,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:4.3},
+   {id:'yarn6',kind:'gif',label:'毛线球→液体 ③',gif:'yarn_liquid',x:63,y:-2.5,w:13,vis:true,
+      cropX:0,cropY:0,cropW:100,cropH:100,f0:0,f1:null,speed:4.3}
   ]}
 ];
 
@@ -162,7 +183,8 @@ function drawLayer(L){
     const fi=(gifAnim[L.id]&&gifAnim[L.id].f)||0;
     if(L.id.startsWith('yarn') && SVGFRAMES.ball.length){
       const idx=parseInt((String(L.id).match(/\d+$/)||['1'])[0],10)||1;
-      drawYarnSVG(L, fi, YARN_PREVIEW[(idx-1)%3]);
+      const f=(seg===4)?(g-1):fi;   // 第5段：毛线球/液面停在最后一帧
+      drawYarnSVG(L, f, YARN_PREVIEW[(idx-1)%3]);
       return;
     }
     const im=getFrame(L.gif, fi);
@@ -363,7 +385,15 @@ function loadSaved(){
 
 /* ---- 工具栏 ---- */
 function bindTools(){
-  $('btnPlay').onclick=()=>{playing=!playing; $('btnPlay').textContent=playing?'⏸ 暂停预览':'▶ 播放预览';};
+  $('btnPlay').onclick=()=>{
+    playing=!playing;
+    $('btnPlay').textContent=playing?'⏸ 暂停预览':'▶ 播放预览';
+  };
+  $('btnReplay').onclick=()=>{
+    for(const k in gifAnim) delete gifAnim[k];   // 所有动画同时从头
+    playing=true;
+    $('btnPlay').textContent='⏸ 暂停预览';
+  };
   $('btnSave').onclick=async()=>{
     saveAll();
     const data={seg:SEG.map(s=>({name:s.name,bg:s.bg,bgX:s.bgX,bgY:s.bgY,bgW:s.bgW,grpX:s.grpX,grpY:s.grpY,grpW:s.grpW,layers:s.layers})), photo:photo.name};

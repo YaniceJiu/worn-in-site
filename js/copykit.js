@@ -252,30 +252,29 @@ const IMAGE_B_CN={'rain':'雨','Ocean mist':'海雾','Morning haze':'晨雾','ca
 //          {enSp}英文香料 {imgB}意象英文 {imgCN}意象中文
 // ============================================================
 const TEMPLATES={
-  opening:['哦，来客人了。','我要为你调出最好的香水。','你来了？我正好在调香。'],
+  opening:['哦，来客人了。','来了呀。','正好在调香。'],
   garment:[
-    '你今天穿了条{col}{g}呀。',
     '这件{g}很衬你。',
-    '献给一位穿着美丽{g}的人。',
-    '你试过“{enSp}”吗？you really should try。',
-    '{col}{g}，简单又耐看。',
-    '这件{g}给我一种{imgCN}的感觉。'
+    '{col}{g}，耐看。',
+    '这{g}有味道。',
+    '穿{g}，有品味。'
   ],
   material:[
-    '很喜欢{f}材质上的“{enSp}”香气。',
-    '亲手触摸{f}材质。'
+    '{f}手感好。',
+    '喜欢{f}的质感。',
+    '这{f}，舒服。'
   ],
   color:[
-    '{col}宛如“{enSp}”。',
-    '{col}是美妙的，{imgCN}的颜色。',
-    'Such a dreamy {col}{g}，我要为之添加“{enSp}”。',
-    '{col}总让我想起{imgCN}。'
+    '{col}像{imgCN}。',
+    '这{col}，美。',
+    '{col}好看。',
+    '{col}想起{imgCN}。'
   ],
-  printBold:['豹纹是大胆的。你的品味不错。'],
-  printOther:['{imgCN}一般的{p}…添加一些“{enSp}”。','用这个{p}的人不多，你很有性格。'],
-  scent:['需要一点{imgCN}，用“{enSp}”正好。','这种时候，适合一点{enSp}。','加一点{enSp}，感觉就对了。'],
-  ending1:['这是我的作品，hope you like it。','好了，慢慢享受。'],
-  ending2:['给你准备了两个多余的香，你可以选择少量添加它们。']
+  printBold:['豹纹，大胆。'],
+  printOther:['{p}像{imgCN}。','这{p}，少见。'],
+  scent:['来点{imgCN}。','加点{imgCN}正好。','{imgCN}，对了。'],
+  ending1:['调好了。','慢慢享受。'],
+  ending2:['还有小样，可加。']
 };
 const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
 const fill=(tpl,o)=>tpl.replace(/\{(col|g|enSp|imgCN|imgB|f|p)\}/g,(_,k)=>o[k]||'');
@@ -333,14 +332,12 @@ function genCopy(a){
     if(t==='fabric'){
       const f=lab;
       const mSp=take([IMAGE_B[MATERIAL_B[f]||'wind']].filter(s=>all.indexOf(s)>=0));
-      const mPool=TEMPLATES.material.filter(tp=>(tp.indexOf('亲手触摸')>=0&&SOFT_FABRIC.indexOf(f)>=0)||(tp.indexOf('材质上的')>=0&&SCENT_FABRIC.indexOf(f)>=0));
-      if(!mPool.length) return null;
-      return {t:fill(pickNR(mPool),Object.assign({},base,{f,enSp:SPICE_EN[mSp]||mSp})), s:mSp};
+      return {t:fill(pickNR(TEMPLATES.material),Object.assign({},base,{f})), s:mSp};
     }
     if(t==='garment'){
       const g=lab;
-      const gPool=base.col?['你今天穿了条{col}{g}呀。','{col}{g}，简单又耐看。','这件{g}给我一种{imgCN}的感觉。','这件{g}很衬你。','献给一位穿着美丽{g}的人。','你试过“{enSp}”吗？you really should try。']
-        :['这件{g}很衬你。','献给一位穿着美丽{g}的人。','你试过“{enSp}”吗？you really should try。'];
+      const gPool=base.col?['这件{g}很衬你。','{col}{g}，耐看。','这{g}有味道。','穿{g}，有品味。']
+        :['这件{g}很衬你。','这{g}有味道。','穿{g}，有品味。'];
       const tpl=pickNR(gPool);
       // 款式句若带颜色（{col}），香料也要匹配该颜色
       const gSp=tpl.indexOf('{col}')>=0?colorMatch(base.col):take([]);
@@ -365,9 +362,9 @@ function genCopy(a){
     if(!item){ const fSp=take([]); item={t:scentOf(fSp), s:fSp}; } // 无适用模板时用香味句补足
     add(item.t,item.s);
   }
-  // 5 句中段最后一句固定为「我最后会加一点{香料}」
+  // 5 句中段最后一句固定为「最后加点{香料}」
   const lastSp=take([]);
-  add('我最后会加一点'+(SPICE_EN[lastSp]||lastSp)+'。', lastSp);
+  add('最后加点'+lastSp+'。', lastSp);
   // 收尾（两句）
   add(fill(pick(TEMPLATES.ending1),base),'');
   add(fill(TEMPLATES.ending2[0],base),'');
@@ -388,4 +385,4 @@ function makeCopy(g){
   const a={style:g.style||{}, colors:g.colors||[], slots:attrSlotsFor(g)};
   return genCopy(a);
 }
-window.COPY={RECIPES,STYLE_DEFS,pickVariant,makeCopy};
+window.COPY={RECIPES,STYLE_DEFS,pickVariant,makeCopy,SPICE_EN,SPICE_IMG,IMAGE_B,IMAGE_B_CN,MATERIAL_B,PRINT_IMG,SPICE_COLOR,COLOR_IMG};

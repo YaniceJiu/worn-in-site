@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Worn-In 试香机 · 运行流程图</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --ink: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  }
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 6px;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(31,35,40,.06);
+  }
+  .mermaid { display: flex; justify-content: center; }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot {
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    display: inline-block;
+    flex: none;
+  }
+  .dot.done    { background: #d4edda; border: 2px solid #2da44e; }
+  .dot.partial { background: #fff3cd; border: 2px solid #bf8700; }
+  .dot.missing { background: #ffdce0; border: 2px solid #cf222e; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 24px;
+    font-size: 13px;
+    background: var(--card);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f0f3f6; font-weight: 600; }
+  .tag {
+    display: inline-block;
+    padding: 1px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tag.done    { background: #d4edda; color: #116329; }
+  .tag.partial { background: #fff3cd; color: #7d4e00; }
+  .tag.missing { background: #ffdce0; color: #82071e; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Worn-In 试香机 · 运行流程</h1>
+  <p class="sub">根据 2026-09-30 流程图整理 —— 颜色标注当前网站的实现进度</p>
+
+  <div class="card">
+    <pre class="mermaid">
+flowchart TD
+    A["电子猫眼待机"] --> B["顾客进入"]
+    B --> C["拍照 · AI 分析衣服"]
+    C -- "不成功" --> D["报错"]
+    C -- "成功 · 不满意" --> C
+    C -- "成功 · 满意" --> E["制香动画<br/>连接机器 · 泵转 1s 出香"]
+    E -- "不满意制香" --> F["加减 modifier"]
+    F --> E
+    E -- "满意制香" --> G["示意拉开抽屉 + 取香卡动画"]
+    G --> H{"是否花 35🔪 买下？"}
+    H -- "否" --> I["结果长条 · 扫码获得"]
+    H -- "是" --> J["付款码"]
+    J --> K["确认收到钱"]
+    K --> L["制香小动画<br/>连接机器 · 泵转 1s 出香"]
+    L --> M["示意拉开抽屉 + 取香水动画"]
+    M --> I
+    I -- "十五秒之后自动" --> A
+
+    classDef done    fill:#d4edda,stroke:#2da44e,stroke-width:2px,color:#116329
+    classDef partial fill:#fff3cd,stroke:#bf8700,stroke-width:2px,color:#7d4e00
+    classDef missing fill:#ffdce0,stroke:#cf222e,stroke-width:2px,color:#82071e
+
+    class A,B,C done
+    class D,E,G,L,M partial
+    class F,H,I,J,K missing
+    </pre>
+
+    <div class="legend">
+      <span><i class="dot done"></i> 已有，符合流程</span>
+      <span><i class="dot partial"></i> 已有，但不完全符合</span>
+      <span><i class="dot missing"></i> 完全缺失</span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:34%">流程图环节</th>
+        <th style="width:34%">网站现状</th>
+        <th>状态</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>电子猫眼待机</td><td><code>js/catgate.js</code> 无人 6s 打瞌睡 + 视线下垂，待机状态</td><td><span class="tag done">已有</span></td></tr>
+      <tr><td>顾客进入</td><td><code>js/catgate.js</code> 猫眼 <code>touch me</code> 点击放行</td><td><span class="tag done">已有</span></td></tr>
+      <tr><td>拍照 · AI 分析衣服</td><td><code>play.js</code> 竖屏镜头 + 3·2·1 圆形倒计时 + <code>analyzePhoto()</code> GPT-4o-mini 视觉</td><td><span class="tag done">已有</span></td></tr>
+      <tr><td>报错</td><td>仅有 AI 失败重试弹窗，无「识别不到衣服 → 报错」专用分支</td><td><span class="tag partial">部分</span></td></tr>
+      <tr><td>制香动画【泵转 1s】</td><td><code>sendToPump()</code> → <code>POST /pump</code> → <code>server.py</code> 串口 ESP32（<code>PUMP_MAP</code>）；触发时机不对、时长固定 2s</td><td><span class="tag partial">部分</span></td></tr>
+      <tr><td>加减 modifier</td><td>无任何入口</td><td><span class="tag missing">缺失</span></td></tr>
+      <tr><td>拉开抽屉 + 取香卡</td><td>段3「衣柜打开」GIF 是动画开门，非抽屉 + 取香卡</td><td><span class="tag partial">部分</span></td></tr>
+      <tr><td>是否花 35🔪 买下？</td><td>无</td><td><span class="tag missing">缺失</span></td></tr>
+      <tr><td>付款码</td><td>无</td><td><span class="tag missing">缺失</span></td></tr>
+      <tr><td>确认收到钱</td><td>无</td><td><span class="tag missing">缺失</span></td></tr>
+      <tr><td>制香小动画【泵 1s】</td><td>同 <code>sendToPump()</code>，触发/时长待改</td><td><span class="tag partial">部分</span></td></tr>
+      <tr><td>拉开抽屉 + 取香水</td><td>段3 开门 GIF 可复用，取香水瓶动画无</td><td><span class="tag partial">部分</span></td></tr>
+      <tr><td>结果长条 · 扫码</td><td>无（现只有香料标签 + 飘句，无结果长条/二维码）</td><td><span class="tag missing">缺失</span></td></tr>
+      <tr><td>15 秒后自动返回待机</td><td>无</td><td><span class="tag missing">缺失</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral', flowchart: { curve: 'basis', htmlLabels: true } });
+</script>
+</body>
+</html>
