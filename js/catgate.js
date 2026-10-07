@@ -359,10 +359,10 @@ async function initDetector(){
 function updateStatus(){
   if(!statusEl) return;
   let txt;
-  if(!camOk) txt = '摄像头未开启';
-  else if(!faceDetector) txt = '模型加载中…';
-  else if(lastFace) txt = '👀 检测到人';
-  else txt = '摄像头已开 · 未检测到人';
+  if(!camOk) txt = 'Camera off';
+  else if(!faceDetector) txt = 'Loading model…';
+  else if(lastFace) txt = '👀 Face detected';
+  else txt = 'Camera on · no face yet';
   if(statusEl.textContent !== txt) statusEl.textContent = txt;
   statusEl.classList.add('show');
   window.__gate = { camOk, det: !!faceDetector, face: lastFace, lookX: +lookX.toFixed(2), lookY: +lookY.toFixed(2) };

@@ -11,3 +11,7 @@ stripe_key.txt
 
 assets/tmp/
 assets/mat_preview/
+
+# 香料板：参考图暂存 + 运行日志（成品放 assets/spices/*.png，要提交）
+assets/spices/_raw/
+tools/_run.log

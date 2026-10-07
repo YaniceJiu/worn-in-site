@@ -1,22 +1,29 @@
-/* copykit.js — 从 衣橱变变变/四特征分析器.html 原样移植的香料配方+香语文案引擎 */
+/* copykit.js — 香料配方 + 香语文案引擎（英文取值版）
+   ────────────────────────────────────────────────────────────────
+   改词表时请遵守：
+   · 香料名一律保留中文当「键」：SPICE_EN / SPICE_IMG / SPICE_COLOR / IMAGE_B / RECIPES 香料表
+     —— 这些是拿 GPT 配方的香料列表去查的，翻了就查不到。
+   · 颜色、面料、印花、款式、风格、变种、意象 一律英文取值 ——
+     GPT 提示词也按同一套英文枚举返回，两边必须一致。
+   ──────────────────────────────────────────────────────────────── */
 const STYLE_DEFS=[
-  {name:'野性风',emoji:'🌿',
-   g:{},c:{'黑色':1,'棕色':1,'驼色':1,'酒红':0.5},p:{'豹纹/动物纹':3},f:{'皮革':3,'毛绒':1},
+  {name:'wild',emoji:'🌿',
+   g:{},c:{'black':1,'brown':1,'camel':1,'wine red':0.5},p:{'leopard/animal print':3},f:{'leather':3,'fleece':1},
    top:['小豆蔻','柑橘','粉红胡椒'],mid:['皮革','藏红花','焚香','黑醋栗芽'],base:['乳香','广藿香','琥珀','烟草木']},
-  {name:'甜美少女',emoji:'🍬',
-   g:{'短裙':1,'连衣裙':1},c:{'粉色':2,'玫红':2,'浅粉':2,'白色':1,'浅灰':1,'淡紫':1,'米黄':1},p:{'波点':3,'碎花':2},f:{'丝绸/缎面':1},
+  {name:'sweet',emoji:'🍬',
+   g:{'short skirt':1,'dress':1},c:{'pink':2,'rose red':2,'light pink':2,'white':1,'light grey':1,'lilac':1,'cream':1},p:{'polka dot':3,'floral':2},f:{'silk/satin':1},
    top:['青草','樱花','蜜桃','橙花'],mid:['紫罗兰','乳香','栀子花','棉花糖'],base:['香草','白木','鸢尾脂']},
-  {name:'运动风',emoji:'🏃',
-   g:{'卫衣/毛衣':2,'T恤/上衣':2,'上衣':2,'短裤':2,'背心':1},c:{'黑色':0.5,'白色':0.5,'蓝色':0.5,'藏青':0.5,'天蓝':0.5,'浅蓝':0.5,'牛仔蓝':0.5},p:{'条纹':1},f:{'科技/运动面料':3,'牛仔':1.5},
+  {name:'sporty',emoji:'🏃',
+   g:{'sweatshirt/sweater':2,'tee/top':2,'top':2,'shorts':2,'tank':1},c:{'black':0.5,'white':0.5,'blue':0.5,'navy':0.5,'sky blue':0.5,'light blue':0.5,'denim blue':0.5},p:{'stripe':1},f:{'tech/sport fabric':3,'denim':1.5},
    top:['甜橙','野莓','葡萄柚','薄荷'],mid:['依兰','广藿香','海水'],base:['岩兰草','松针','肉豆蔻']},
-  {name:'办公风格',emoji:'👔',
-   g:{'衬衫':3,'外套/夹克':3},c:{'黑色':1,'白色':1,'灰色':1,'深灰':1,'藏青':1,'深蓝':1},p:{'格纹':2,'条纹':1},f:{'棉':0.5},
+  {name:'office',emoji:'👔',
+   g:{'shirt':3,'jacket':3},c:{'black':1,'white':1,'grey':1,'dark grey':1,'navy':1,'dark blue':1},p:{'check':2,'stripe':1},f:{'cotton':0.5},
    top:['白茶','佛手柑','绿叶'],mid:['橡木苔','天竺葵','雪松'],base:['白麝香','香根草','龙涎香醚']},
-  {name:'森系居家',emoji:'🏡',
-   g:{'连衣裙':1,'卫衣/毛衣':1,'长裙':1},c:{'米色':2,'卡其':2,'绿色':2,'橄榄绿':2,'暗橄榄绿':2,'军绿':2,'浅绿':1.5,'棕色':2,'米黄':1,'驼色':1},p:{'碎花':1,'纯色':0.5},f:{'棉麻/亚麻':3,'毛绒':2,'针织/毛衣':2,'牛仔':0.5},
+  {name:'natural/home',emoji:'🏡',
+   g:{'dress':1,'sweatshirt/sweater':1,'long dress':1},c:{'beige':2,'khaki':2,'green':2,'olive':2,'deep olive':2,'army green':2,'light green':1.5,'brown':2,'cream':1,'camel':1},p:{'floral':1,'solid':0.5},f:{'linen':3,'fleece':2,'knit/sweater':2,'denim':0.5},
    top:['柑橘','郁金香','无花果叶','竹叶'],mid:['白茶','白麝香','铃兰','小黄瓜','松针'],base:['橡木','香葵子','苔藓']},
-  {name:'晚礼服/名媛',emoji:'👗',
-   g:{'连衣裙':1.5,'长裙':1.5},c:{'黑色':1,'藏青':1,'深蓝':1,'紫色':1,'酒红':0.5,'深灰':0.5},p:{'纯色':0.5},f:{'丝绸/缎面':2},
+  {name:'evening',emoji:'👗',
+   g:{'dress':1.5,'long dress':1.5},c:{'black':1,'navy':1,'dark blue':1,'purple':1,'wine red':0.5,'dark grey':0.5},p:{'solid':0.5},f:{'silk/satin':2},
    top:['小苍兰','海洋','乌龙','香槟气泡'],mid:['白茶','仙客来','玫瑰净油','木兰'],base:['檀木','零陵香豆','麝香酮','鸢尾根']},
 ];
 
@@ -24,35 +31,35 @@ const STYLE_DEFS=[
 //  6 大风格 × 3 变种 = 18 配方（变种 = 原配方微调，按属性自动选 + 随机兜底）
 // ============================================================
 const RECIPES={
-  '野性风':{
-    '原野':{top:['柑橘','小豆蔻'],mid:['藏红花','皮革'],base:['烟草木','乳香','琥珀']},
-    '机车':{top:['小豆蔻','粉红胡椒'],mid:['皮革','藏红花','黑醋栗芽'],base:['琥珀','烟草木','广藿香']},
-    '暗夜':{top:['粉红胡椒','黑醋栗芽'],mid:['焚香','皮革'],base:['乳香','琥珀','广藿香']}
+  'wild':{
+    'meadow':{top:['柑橘','小豆蔻'],mid:['藏红花','皮革'],base:['烟草木','乳香','琥珀']},
+    'biker':{top:['小豆蔻','粉红胡椒'],mid:['皮革','藏红花','黑醋栗芽'],base:['琥珀','烟草木','广藿香']},
+    'nightfall':{top:['粉红胡椒','黑醋栗芽'],mid:['焚香','皮革'],base:['乳香','琥珀','广藿香']}
   },
-  '办公风格':{
-    '会议':{top:['白茶','佛手柑'],mid:['雪松','橡木苔'],base:['白麝香','香根草']},
-    '咖啡':{top:['白茶','绿叶'],mid:['天竺葵','雪松'],base:['白麝香','檀木','龙涎香醚']},
-    '周末':{top:['佛手柑','绿叶'],mid:['天竺葵','橡木苔'],base:['香根草','龙涎香醚']}
+  'office':{
+    'meeting':{top:['白茶','佛手柑'],mid:['雪松','橡木苔'],base:['白麝香','香根草']},
+    'coffee':{top:['白茶','绿叶'],mid:['天竺葵','雪松'],base:['白麝香','檀木','龙涎香醚']},
+    'weekend':{top:['佛手柑','绿叶'],mid:['天竺葵','橡木苔'],base:['香根草','龙涎香醚']}
   },
-  '甜美少女':{
-    '糖果':{top:['蜜桃','橙花','樱花'],mid:['棉花糖','栀子花','乳香'],base:['香草','白木']},
-    '花果':{top:['樱花','橙花','蜜桃'],mid:['栀子花','紫罗兰'],base:['鸢尾脂','白木']},
-    '淡雅':{top:['青草','樱花'],mid:['紫罗兰','乳香'],base:['白木','鸢尾脂']}
+  'sweet':{
+    'candy':{top:['蜜桃','橙花','樱花'],mid:['棉花糖','栀子花','乳香'],base:['香草','白木']},
+    'fruity floral':{top:['樱花','橙花','蜜桃'],mid:['栀子花','紫罗兰'],base:['鸢尾脂','白木']},
+    'delicate':{top:['青草','樱花'],mid:['紫罗兰','乳香'],base:['白木','鸢尾脂']}
   },
-  '运动风':{
-    '海盐':{top:['野莓','薄荷'],mid:['海水','依兰'],base:['岩兰草','松针']},
-    '森林':{top:['甜橙','葡萄柚','薄荷'],mid:['松针','广藿香'],base:['岩兰草','肉豆蔻']},
-    '薄荷':{top:['薄荷','甜橙'],mid:['依兰','海水'],base:['岩兰草','松针']}
+  'sporty':{
+    'sea salt':{top:['野莓','薄荷'],mid:['海水','依兰'],base:['岩兰草','松针']},
+    'forest':{top:['甜橙','葡萄柚','薄荷'],mid:['松针','广藿香'],base:['岩兰草','肉豆蔻']},
+    'mint':{top:['薄荷','甜橙'],mid:['依兰','海水'],base:['岩兰草','松针']}
   },
-  '森系居家':{
-    '雨后':{top:['竹叶','郁金香','无花果叶'],mid:['小黄瓜','铃兰','白茶'],base:['苔藓','橡木']},
-    '暖木':{top:['柑橘','无花果叶'],mid:['白麝香','白茶'],base:['橡木','香葵子','苔藓']},
-    '茶香':{top:['柑橘','郁金香'],mid:['白茶','铃兰','松针'],base:['香葵子','橡木']}
+  'natural/home':{
+    'after rain':{top:['竹叶','郁金香','无花果叶'],mid:['小黄瓜','铃兰','白茶'],base:['苔藓','橡木']},
+    'warm wood':{top:['柑橘','无花果叶'],mid:['白麝香','白茶'],base:['橡木','香葵子','苔藓']},
+    'tea':{top:['柑橘','郁金香'],mid:['白茶','铃兰','松针'],base:['香葵子','橡木']}
   },
-  '晚礼服/名媛':{
-    '玫瑰':{top:['小苍兰','乌龙'],mid:['玫瑰净油','木兰'],base:['檀木','鸢尾根']},
-    '香槟':{top:['香槟气泡','小苍兰','乌龙'],mid:['白茶','仙客来'],base:['零陵香豆','麝香酮']},
-    '东方':{top:['乌龙','海洋'],mid:['玫瑰净油','仙客来'],base:['檀木','零陵香豆','麝香酮','鸢尾根']}
+  'evening':{
+    'rose':{top:['小苍兰','乌龙'],mid:['玫瑰净油','木兰'],base:['檀木','鸢尾根']},
+    'champagne':{top:['香槟气泡','小苍兰','乌龙'],mid:['白茶','仙客来'],base:['零陵香豆','麝香酮']},
+    'oriental':{top:['乌龙','海洋'],mid:['玫瑰净油','仙客来'],base:['檀木','零陵香豆','麝香酮','鸢尾根']}
   }
 };
 // 变种选择：按「最强属性」分流（常见来源按冷暖/深浅拆），无强信号随机兜底
@@ -60,49 +67,49 @@ function pickVariant(styleName,attrs){
   const style=RECIPES[styleName]; if(!style) return null;
   const names=Object.keys(style);
   const c=attrs.color||'', p=attrs.print||'', f=attrs.fabric||'', g=attrs.garment||'';
-  const warm=['棕色','驼色','卡其','米色','深棕','米黄','橙色','黄色','酒红'];
-  const cool=['黑色','深灰','灰色','藏青','深蓝','蓝色','天蓝','浅蓝','牛仔蓝','浅灰','白色'];
-  const light=['白色','浅灰','浅粉','米色','米黄','浅蓝','天蓝','淡紫'];
-  const dark=['黑色','深灰','藏青','深蓝','墨绿','暗橄榄绿','深棕','酒红','深紫'];
-  const blue=['蓝色','天蓝','浅蓝','藏青','深蓝','牛仔蓝'];
-  const green=['绿色','浅绿','墨绿','橄榄绿','暗橄榄绿','军绿'];
-  const warmTone=['棕色','驼色','卡其','米色','米黄','橙色','黄色','深棕'];
-  const pink=['粉色','浅粉','玫红'];
-  const red=['红色','玫红','酒红'];
+  const warm=['brown','camel','khaki','beige','dark brown','cream','orange','yellow','wine red'];
+  const cool=['black','dark grey','grey','navy','dark blue','blue','sky blue','light blue','denim blue','light grey','white'];
+  const light=['white','light grey','light pink','beige','cream','light blue','sky blue','lilac'];
+  const dark=['black','dark grey','navy','dark blue','dark green','deep olive','dark brown','wine red','deep purple'];
+  const blue=['blue','sky blue','light blue','navy','dark blue','denim blue'];
+  const green=['green','light green','dark green','olive','deep olive','army green'];
+  const warmTone=['brown','camel','khaki','beige','cream','orange','yellow','dark brown'];
+  const pink=['pink','light pink','rose red'];
+  const red=['red','rose red','wine red'];
   const any=()=>names[Math.floor(Math.random()*names.length)];
-  if(styleName==='野性风'){
-    if(p==='豹纹/动物纹') return '原野';
-    if(f==='皮革') return warm.indexOf(c)>=0?'机车':'暗夜';   // 皮革按冷暖分流
-    if(f==='毛绒') return dark.indexOf(c)>=0?'暗夜':'机车';
+  if(styleName==='wild'){
+    if(p==='leopard/animal print') return 'meadow';
+    if(f==='leather') return warm.indexOf(c)>=0?'biker':'nightfall';   // 皮革按冷暖分流
+    if(f==='fleece') return dark.indexOf(c)>=0?'nightfall':'biker';
     return any();
   }
-  if(styleName==='办公风格'){
-    if(g==='衬衫'||g==='外套/夹克') return f==='棉'?'咖啡':(warm.indexOf(c)>=0?'周末':'会议');
-    if(light.indexOf(c)>=0) return '周末';
+  if(styleName==='office'){
+    if(g==='shirt'||g==='jacket') return f==='cotton'?'coffee':(warm.indexOf(c)>=0?'weekend':'meeting');
+    if(light.indexOf(c)>=0) return 'weekend';
     return any();
   }
-  if(styleName==='甜美少女'){
-    if(pink.indexOf(c)>=0) return '糖果';
-    if(p==='碎花'||p==='波点') return '花果';
-    if(light.indexOf(c)>=0) return '淡雅';
+  if(styleName==='sweet'){
+    if(pink.indexOf(c)>=0) return 'candy';
+    if(p==='floral'||p==='polka dot') return 'fruity floral';
+    if(light.indexOf(c)>=0) return 'delicate';
     return any();
   }
-  if(styleName==='运动风'){
-    if(blue.indexOf(c)>=0) return '海盐';
-    if(green.indexOf(c)>=0) return '森林';
-    if(p==='条纹') return '薄荷';
+  if(styleName==='sporty'){
+    if(blue.indexOf(c)>=0) return 'sea salt';
+    if(green.indexOf(c)>=0) return 'forest';
+    if(p==='stripe') return 'mint';
     return any();
   }
-  if(styleName==='森系居家'){
-    if(green.indexOf(c)>=0) return '雨后';
-    if(f==='棉麻/亚麻') return '茶香';
-    if(warmTone.indexOf(c)>=0) return '暖木';
+  if(styleName==='natural/home'){
+    if(green.indexOf(c)>=0) return 'after rain';
+    if(f==='linen') return 'tea';
+    if(warmTone.indexOf(c)>=0) return 'warm wood';
     return any();
   }
-  if(styleName==='晚礼服/名媛'){
-    if(red.indexOf(c)>=0) return '玫瑰';
-    if(light.indexOf(c)>=0) return '香槟';
-    if(dark.indexOf(c)>=0) return '东方';
+  if(styleName==='evening'){
+    if(red.indexOf(c)>=0) return 'rose';
+    if(light.indexOf(c)>=0) return 'champagne';
+    if(dark.indexOf(c)>=0) return 'oriental';
     return any();
   }
   return any();
@@ -110,6 +117,7 @@ function pickVariant(styleName,attrs){
 
 // ============================================================
 //  💌 香语文案：香料→英文气质词(A) / 意象→香料(B)
+//     ⚠ 下面这张表的「键」是香料名，必须保持中文
 // ============================================================
 const SPICE_EN={
   '小豆蔻':'spicy cardamom','柑橘':'bright citrus','皮革':'tan leather','焚香':'smoky frankincense',
@@ -128,6 +136,7 @@ const SPICE_EN={
   '甜橙':'sunny sweet orange','葡萄柚':'tangy grapefruit','肉豆蔻':'warm nutmeg','玫瑰净油':'velvet rose absolute',
   '木兰':'creamy magnolia','鸢尾根':'powdery orris root','香槟气泡':'fizzing champagne','麝香酮':'sensual muscone'
 };
+// 意象(B) → 香料（值同样是中文香料名，不要翻译）
 const IMAGE_B={
   'rain':'仙客来','Ocean mist':'海水','Morning haze':'青草','caramel':'香草','desert rain':'岩兰草',
   'fog':'焚香','Salt breeze':'海水','honey':'蜜桃','iron':'藏红花','ice':'薄荷','Quiet library dust':'香根草',
@@ -137,95 +146,94 @@ const IMAGE_B={
   'Green flecks in golden dough':'小豆蔻','tar':'烟草木','Cloud drift':'白麝香',
   'Forest shadow':'橡木苔','Velvet dusk':'檀木','Honeycomb drip':'蜜桃'
 };
-// 材质 → 意象(B)
-const MATERIAL_B={'皮革':'iron','牛仔':'stone','针织/毛衣':'Ash from incense','棉':'Cloud drift','丝绸/缎面':'Dew on glass','棉麻/亚麻':'Morning haze','科技/运动面料':'wind','毛绒':'Cloud drift'};
+// 材质 → 意象(B)（键是英文材质，与 GPT 返回的 fabric 一致）
+const MATERIAL_B={'leather':'iron','denim':'stone','knit/sweater':'Ash from incense','cotton':'Cloud drift','silk/satin':'Dew on glass','linen':'Morning haze','tech/sport fabric':'wind','fleece':'Cloud drift'};
 
 // ============================================================
 //  适用情景规则（生成文案时按条件过滤模板）
 // ============================================================
-const SOFT_FABRIC=['棉','丝绸/缎面','棉麻/亚麻','针织/毛衣','毛绒'];              // 可「亲手触摸」
-const SCENT_FABRIC=['棉','丝绸/缎面','棉麻/亚麻','针织/毛衣','毛绒','皮革'];      // 可「留香」
-const DISTINCT_PRINT=['豹纹/动物纹','扎染','碎花','格纹'];                        // 可用「用这个印花的人不多」
-const ALL_PRINT=['豹纹/动物纹','扎染','碎花','格纹','条纹','波点'];               // 有花纹
-const PRINT_IMG={'碎花':'Morning haze','波点':'Dew on glass','格纹':'Quiet library dust','条纹':'Ocean mist','扎染':'Cloud drift','豹纹/动物纹':'Forest shadow'};
-// 颜色 → 允许的香料系（颜色句必须香料同调性；藏红花偏红归红色系）
-// 香料 → 可配颜色（色调匹配，range放宽；颜色句从「配方里匹配当前颜色的香料」中选，保证色调对得上）
+const SOFT_FABRIC=['cotton','silk/satin','linen','knit/sweater','fleece'];              // 可「亲手触摸」
+const SCENT_FABRIC=['cotton','silk/satin','linen','knit/sweater','fleece','leather'];   // 可「留香」
+const DISTINCT_PRINT=['leopard/animal print','tie-dye','floral','check'];               // 可用「用这个印花的人不多」
+const ALL_PRINT=['leopard/animal print','tie-dye','floral','check','stripe','polka dot']; // 有花纹
+const PRINT_IMG={'floral':'Morning haze','polka dot':'Dew on glass','check':'Quiet library dust','stripe':'Ocean mist','tie-dye':'Cloud drift','leopard/animal print':'Forest shadow'};
+// 香料 → 可配颜色（键=香料名保持中文；值=英文色名，必须与 GPT 的 color name 一致）
 const SPICE_COLOR={
   // ── 野性 / 皮革 / 焚香 ──
-  '皮革':['黑色','深灰','灰色','深棕','棕色','卡其','藏青','深蓝','牛仔蓝'],
-  '烟草木':['黑色','深灰','深棕','棕色','酒红'],
-  '藏红花':['黑色','深灰','酒红','红色','玫红','棕色'],
-  '焚香':['黑色','深灰','酒红','红色','深紫'],
-  '乳香':['黑色','深灰','灰色','棕色','卡其'],
-  '琥珀':['黑色','深灰','深棕','棕色','驼色','卡其','米色','橙色','黄色','酒红'],
-  '广藿香':['黑色','深灰','深棕','棕色','墨绿','军绿','橄榄绿','暗橄榄绿'],
-  '黑醋栗芽':['黑色','深灰','酒红','深紫','紫色'],
-  '粉红胡椒':['黑色','深灰','酒红','玫红','粉色','橙色','卡其'],
-  '小豆蔻':['棕色','卡其','米色','橙色','黄色','墨绿','橄榄绿'],
+  '皮革':['black','dark grey','grey','dark brown','brown','khaki','navy','dark blue','denim blue'],
+  '烟草木':['black','dark grey','dark brown','brown','wine red'],
+  '藏红花':['black','dark grey','wine red','red','rose red','brown'],
+  '焚香':['black','dark grey','wine red','red','deep purple'],
+  '乳香':['black','dark grey','grey','brown','khaki'],
+  '琥珀':['black','dark grey','dark brown','brown','camel','khaki','beige','orange','yellow','wine red'],
+  '广藿香':['black','dark grey','dark brown','brown','dark green','army green','olive','deep olive'],
+  '黑醋栗芽':['black','dark grey','wine red','deep purple','purple'],
+  '粉红胡椒':['black','dark grey','wine red','rose red','pink','orange','khaki'],
+  '小豆蔻':['brown','khaki','beige','orange','yellow','dark green','olive'],
   // ── 办公 / 木质 / 茶 ──
-  '雪松':['黑色','深灰','灰色','浅灰','棕色','藏青','深蓝'],
-  '香根草':['黑色','深灰','灰色','浅灰','卡其','棕色','深棕'],
-  '橡木':['深棕','棕色','驼色','卡其','墨绿','橄榄绿','军绿'],
-  '橡木苔':['墨绿','橄榄绿','军绿','暗橄榄绿','深灰','灰色'],
-  '苔藓':['墨绿','橄榄绿','军绿','绿色','暗橄榄绿'],
-  '香葵子':['墨绿','橄榄绿','军绿','深灰'],
-  '檀木':['黑色','深棕','棕色','卡其','米色','藏青','深蓝','深紫'],
-  '白木':['白色','浅灰','灰色','米色','米黄','浅粉','淡紫'],
-  '龙涎香醚':['白色','浅灰','灰色','米色','浅蓝','天蓝','淡紫','浅粉'],
-  '乌龙':['黑色','深灰','棕色','深棕','酒红','藏青','深蓝','深紫'],
-  '白茶':['白色','浅灰','灰色','米色','米黄','浅粉','淡紫'],
-  '佛手柑':['橙色','黄色','米黄','米色','浅绿','绿色'],
-  '绿叶':['绿色','浅绿','墨绿','橄榄绿','军绿','卡其'],
-  '天竺葵':['粉色','玫红','浅粉','红色'],
-  '柑橘':['橙色','黄色','米黄','米色','浅绿','绿色'],
+  '雪松':['black','dark grey','grey','light grey','brown','navy','dark blue'],
+  '香根草':['black','dark grey','grey','light grey','khaki','brown','dark brown'],
+  '橡木':['dark brown','brown','camel','khaki','dark green','olive','army green'],
+  '橡木苔':['dark green','olive','army green','deep olive','dark grey','grey'],
+  '苔藓':['dark green','olive','army green','green','deep olive'],
+  '香葵子':['dark green','olive','army green','dark grey'],
+  '檀木':['black','dark brown','brown','khaki','beige','navy','dark blue','deep purple'],
+  '白木':['white','light grey','grey','beige','cream','light pink','lilac'],
+  '龙涎香醚':['white','light grey','grey','beige','light blue','sky blue','lilac','light pink'],
+  '乌龙':['black','dark grey','brown','dark brown','wine red','navy','dark blue','deep purple'],
+  '白茶':['white','light grey','grey','beige','cream','light pink','lilac'],
+  '佛手柑':['orange','yellow','cream','beige','light green','green'],
+  '绿叶':['green','light green','dark green','olive','army green','khaki'],
+  '天竺葵':['pink','rose red','light pink','red'],
+  '柑橘':['orange','yellow','cream','beige','light green','green'],
   // ── 甜美 / 花香 ──
-  '樱花':['粉色','浅粉','白色','浅灰','玫红'],
-  '橙花':['白色','浅粉','米色','米黄','浅灰','粉色'],
-  '蜜桃':['粉色','浅粉','玫红','米色','米黄','橙色'],
-  '栀子花':['白色','浅粉','米色','米黄','粉色','浅灰'],
-  '棉花糖':['白色','浅粉','粉色','浅灰','米色'],
-  '香草':['米色','米黄','棕色','卡其','橙色','粉色','浅粉'],
-  '紫罗兰':['深紫','紫色','淡紫','酒红','玫红'],
-  '鸢尾脂':['淡紫','紫色','浅粉','米色','米黄','白色','浅灰'],
-  '鸢尾根':['深紫','紫色','淡紫','藏青','深蓝','浅灰','灰色'],
-  '依兰':['粉色','浅粉','淡紫','米色'],
-  '郁金香':['粉色','玫红','红色','橙色','黄色','绿色'],
-  '铃兰':['白色','浅灰','浅绿','天蓝','浅蓝','淡紫'],
-  '小苍兰':['白色','浅灰','天蓝','浅蓝','淡紫','浅绿'],
-  '仙客来':['粉色','浅粉','淡紫','白色','浅灰'],
-  '木兰':['白色','浅粉','米色','米黄','浅灰'],
-  '玫瑰净油':['玫红','红色','酒红','深紫','粉色'],
-  '青草':['绿色','浅绿','墨绿','橄榄绿','军绿','卡其'],
-  '无花果叶':['墨绿','橄榄绿','军绿','绿色','浅绿'],
-  '竹叶':['绿色','浅绿','墨绿','橄榄绿'],
-  '小黄瓜':['浅绿','绿色','浅蓝','天蓝','白色'],
+  '樱花':['pink','light pink','white','light grey','rose red'],
+  '橙花':['white','light pink','beige','cream','light grey','pink'],
+  '蜜桃':['pink','light pink','rose red','beige','cream','orange'],
+  '栀子花':['white','light pink','beige','cream','pink','light grey'],
+  '棉花糖':['white','light pink','pink','light grey','beige'],
+  '香草':['beige','cream','brown','khaki','orange','pink','light pink'],
+  '紫罗兰':['deep purple','purple','lilac','wine red','rose red'],
+  '鸢尾脂':['lilac','purple','light pink','beige','cream','white','light grey'],
+  '鸢尾根':['deep purple','purple','lilac','navy','dark blue','light grey','grey'],
+  '依兰':['pink','light pink','lilac','beige'],
+  '郁金香':['pink','rose red','red','orange','yellow','green'],
+  '铃兰':['white','light grey','light green','sky blue','light blue','lilac'],
+  '小苍兰':['white','light grey','sky blue','light blue','lilac','light green'],
+  '仙客来':['pink','light pink','lilac','white','light grey'],
+  '木兰':['white','light pink','beige','cream','light grey'],
+  '玫瑰净油':['rose red','red','wine red','deep purple','pink'],
+  '青草':['green','light green','dark green','olive','army green','khaki'],
+  '无花果叶':['dark green','olive','army green','green','light green'],
+  '竹叶':['green','light green','dark green','olive'],
+  '小黄瓜':['light green','green','light blue','sky blue','white'],
   // ── 运动 / 海洋 / 薄荷 ──
-  '海水':['蓝色','天蓝','浅蓝','藏青','深蓝','牛仔蓝','白色'],
-  '海洋':['蓝色','天蓝','浅蓝','藏青','深蓝','牛仔蓝'],
-  '薄荷':['浅绿','绿色','天蓝','浅蓝','白色','浅灰'],
-  '野莓':['玫红','红色','酒红','深紫','紫色'],
-  '甜橙':['橙色','黄色','米黄','米色'],
-  '葡萄柚':['橙色','黄色','米黄','浅绿','绿色','浅蓝'],
-  '岩兰草':['棕色','卡其','橄榄绿','军绿','牛仔蓝','蓝色'],
-  '松针':['墨绿','橄榄绿','军绿','绿色','深蓝','藏青'],
-  '肉豆蔻':['棕色','深棕','卡其','米色','酒红','橙色'],
+  '海水':['blue','sky blue','light blue','navy','dark blue','denim blue','white'],
+  '海洋':['blue','sky blue','light blue','navy','dark blue','denim blue'],
+  '薄荷':['light green','green','sky blue','light blue','white','light grey'],
+  '野莓':['rose red','red','wine red','deep purple','purple'],
+  '甜橙':['orange','yellow','cream','beige'],
+  '葡萄柚':['orange','yellow','cream','light green','green','light blue'],
+  '岩兰草':['brown','khaki','olive','army green','denim blue','blue'],
+  '松针':['dark green','olive','army green','green','dark blue','navy'],
+  '肉豆蔻':['brown','dark brown','khaki','beige','wine red','orange'],
   // ── 名媛 / 甜香 ──
-  '香槟气泡':['白色','浅灰','米色','米黄','浅蓝','天蓝','淡紫'],
-  '麝香酮':['黑色','深灰','深棕','藏青','深蓝','深紫'],
-  '零陵香豆':['棕色','卡其','米色','深棕','酒红','橙色'],
-  '白麝香':['白色','浅灰','灰色','米色','米黄','浅粉','淡紫']
+  '香槟气泡':['white','light grey','beige','cream','light blue','sky blue','lilac'],
+  '麝香酮':['black','dark grey','dark brown','navy','dark blue','deep purple'],
+  '零陵香豆':['brown','khaki','beige','dark brown','wine red','orange'],
+  '白麝香':['white','light grey','grey','beige','cream','light pink','lilac']
 };
 // 颜色 → 意象（颜色句用，贴合颜色调性）
 const COLOR_IMG={
-  '黑色':'Ash from incense','深灰':'Ash from incense','灰色':'Morning haze','浅灰':'Morning haze','白色':'Cloud drift','浅粉':'Cloud drift',
-  '红色':'Candle glow','酒红':'Candle glow','玫红':'Candle glow','粉色':'Honeycomb drip',
-  '橙色':'Candle glow','黄色':'Candle glow','米黄':'caramel',
-  '深棕':'Sun-warmed bark','棕色':'Sun-warmed bark','驼色':'Sun-warmed bark','卡其':'Sun-warmed bark','米色':'Sun-warmed bark',
-  '绿色':'Morning haze','浅绿':'Morning haze','墨绿':'Forest shadow','橄榄绿':'Forest shadow','暗橄榄绿':'Forest shadow','军绿':'Forest shadow',
-  '蓝色':'Ocean mist','天蓝':'Ocean mist','浅蓝':'Ocean mist','藏青':'Ocean mist','深蓝':'Ocean mist','牛仔蓝':'Ocean mist',
-  '紫色':'Velvet dusk','深紫':'Velvet dusk','淡紫':'Velvet dusk'
+  'black':'Ash from incense','dark grey':'Ash from incense','grey':'Morning haze','light grey':'Morning haze','white':'Cloud drift','light pink':'Cloud drift',
+  'red':'Candle glow','wine red':'Candle glow','rose red':'Candle glow','pink':'Honeycomb drip',
+  'orange':'Candle glow','yellow':'Candle glow','cream':'caramel',
+  'dark brown':'Sun-warmed bark','brown':'Sun-warmed bark','camel':'Sun-warmed bark','khaki':'Sun-warmed bark','beige':'Sun-warmed bark',
+  'green':'Morning haze','light green':'Morning haze','dark green':'Forest shadow','olive':'Forest shadow','deep olive':'Forest shadow','army green':'Forest shadow',
+  'blue':'Ocean mist','sky blue':'Ocean mist','light blue':'Ocean mist','navy':'Ocean mist','dark blue':'Ocean mist','denim blue':'Ocean mist',
+  'purple':'Velvet dusk','deep purple':'Velvet dusk','lilac':'Velvet dusk'
 };
-// 香料 → 意象（香味句用：意象必须跟香料同调，不能小豆蔻配风）
+// 香料 → 意象（香味句用：意象必须跟香料同调，不能小豆蔻配风）—— 键保持中文
 const SPICE_IMG={
   '小豆蔻':'flint','柑橘':'Sun-warmed bark','皮革':'iron','焚香':'Ash from incense',
   '藏红花':'Scarlet Velvet','橡木苔':'moss','白茶':'Dew on glass','紫罗兰':'Cloud drift',
@@ -243,41 +251,41 @@ const SPICE_IMG={
   '玫瑰净油':'Velvet dusk','木兰':'cream','鸢尾根':'Velvet dusk','香槟气泡':'Dew on glass','麝香酮':'Cloud drift'
 };
 
-// 意象(B)的中文对照
-const IMAGE_B_CN={'rain':'雨','Ocean mist':'海雾','Morning haze':'晨雾','caramel':'焦糖','desert rain':'沙漠雨','fog':'雾','Salt breeze':'咸海风','honey':'蜜','iron':'铁','ice':'冰','Quiet library dust':'书卷尘','sugar':'糖','Rain on dry earth':'旱地雨','wind':'风','stone':'石','Sun-warmed bark':'暖阳树皮','Candle glow':'烛光','Ash from incense':'香灰','Dew on glass':'窗上露','moss':'苔','bark':'树皮','brine':'盐水','cream':'奶油','peat':'泥炭','flint':'燧石','cocoa':'可可','Green flecks in golden dough':'金面团里的绿点','tar':'沥青','Cloud drift':'流云','Forest shadow':'林间暗影','Velvet dusk':'天鹅绒暮色','Honeycomb drip':'蜜巢滴落','jam':'果酱','Pine resin':'松脂','desert rock':'沙地岩石','Scarlet Velvet':'猩红天鹅绒'};
+// 意象(B) → 英文单词（拼进英文句子；键是 IMAGE_B 里的英文意象名）
+const IMAGE_B_EN={'rain':'rain','Ocean mist':'sea mist','Morning haze':'morning haze','caramel':'caramel','desert rain':'desert rain','fog':'fog','Salt breeze':'salt breeze','honey':'honey','iron':'iron','ice':'ice','Quiet library dust':'library dust','sugar':'sugar','Rain on dry earth':'rain on dry earth','wind':'wind','stone':'stone','Sun-warmed bark':'sun-warmed bark','Candle glow':'candle glow','Ash from incense':'incense ash','Dew on glass':'dew on glass','moss':'moss','bark':'bark','brine':'brine','cream':'cream','peat':'peat','flint':'flint','cocoa':'cocoa','Green flecks in golden dough':'green flecks in golden dough','tar':'tar','Cloud drift':'drifting cloud','Forest shadow':'forest shadow','Velvet dusk':'velvet dusk','Honeycomb drip':'honeycomb drip','jam':'jam','Pine resin':'pine resin','desert rock':'desert rock','Scarlet Velvet':'scarlet velvet'};
 
 // ============================================================
-//  💌 句式素材池（按类型分组，生成时随机抽选）
+//  💌 句式素材池（英文；生成时随机抽选）
 //  占位符：{col}颜色 {g}款式 {f}材质 {p}印花
-//          {enSp}英文香料 {imgB}意象英文 {imgCN}意象中文
+//          {enSp}英文香料 {imgEN}意象英文
 // ============================================================
 const TEMPLATES={
-  opening:['哦，来客人了。','来了呀。','正好在调香。'],
+  opening:['Oh — a guest.','There you are.','Just in time; I was blending.'],
   garment:[
-    '这件{g}很衬你。',
-    '{col}{g}，耐看。',
-    '这{g}有味道。',
-    '穿{g}，有品味。'
+    'This {g} suits you.',
+    '{col} {g} — easy on the eye.',
+    'This {g} has character.',
+    '{g} — good taste.'
   ],
   material:[
-    '{f}手感好。',
-    '喜欢{f}的质感。',
-    '这{f}，舒服。'
+    'That {f} feels lovely.',
+    'I do like the feel of {f}.',
+    '{f} — so comfortable.'
   ],
   color:[
-    '{col}像{imgCN}。',
-    '这{col}，美。',
-    '{col}好看。',
-    '{col}想起{imgCN}。'
+    '{col}, like {imgEN}.',
+    'That {col} is beautiful.',
+    'Lovely {col}.',
+    '{col} reminds me of {imgEN}.'
   ],
-  printBold:['豹纹，大胆。'],
-  printOther:['{p}像{imgCN}。','这{p}，少见。'],
-  scent:['来点{imgCN}。','加点{imgCN}正好。','{imgCN}，对了。'],
-  ending1:['调好了。','慢慢享受。'],
-  ending2:['还有小样，可加。']
+  printBold:['Leopard print — bold.'],
+  printOther:['{p}, like {imgEN}.','{p} — rarely seen.'],
+  scent:['A little {imgEN}, then.','{imgEN} would sit nicely.','{imgEN} — yes, that one.'],
+  ending1:['There. Done.','Take your time with it.'],
+  ending2:['There is a small sample you can add.']
 };
 const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
-const fill=(tpl,o)=>tpl.replace(/\{(col|g|enSp|imgCN|imgB|f|p)\}/g,(_,k)=>o[k]||'');
+const fill=(tpl,o)=>tpl.replace(/\{(col|g|enSp|imgEN|imgB|f|p)\}/g,(_,k)=>o[k]||'');
 // 防相邻两句句法相同（连续抽中同一模板时换一个）
 let lastTpl='';
 const pickNR=pool=>{ if(pool.length<=1)return pool[0]; let t=pick(pool),g=0; while(t===lastTpl&&g<pool.length){t=pick(pool);g++;} lastTpl=t; return t; };
@@ -300,13 +308,14 @@ function genCopy(a){
     const matched=all.filter(s=>(SPICE_COLOR[s]||[]).indexOf(col)>=0);
     return matched.length?take(matched):take([]);
   };
-  const colW=cn=>cn.endsWith('色')?cn:cn+'色';
-  const base={col:colors.length?colW(colors[0]):'',imgB:'wind',imgCN:'风',g:'',f:'',p:'',enSp:''};
+  // 英文色名直接用，不再拼「色」字
+  const colW=cn=>cn;
+  const base={col:colors.length?colW(colors[0]):'',imgB:'wind',imgEN:'wind',g:'',f:'',p:'',enSp:''};
   const res=[]; // 每句 {t:文本, s:香料}
   const add=(t,s)=>res.push({t,s});
   const scentOf=(spice)=>{
     const img=SPICE_IMG[spice]||'wind';
-    return fill(pickNR(TEMPLATES.scent),Object.assign({},base,{imgB:img,imgCN:IMAGE_B_CN[img]||img,enSp:SPICE_EN[spice]||spice}));
+    return fill(pickNR(TEMPLATES.scent),Object.assign({},base,{imgB:img,imgEN:IMAGE_B_EN[img]||img,enSp:SPICE_EN[spice]||spice}));
   };
   const slotLine=(slot)=>{
     const t=slot.type, lab=slot.label||'';
@@ -315,16 +324,16 @@ function genCopy(a){
       const cImg=COLOR_IMG[lab]||'wind';
       // 颜色句必出：香料必须匹配当前颜色（SPICE_COLOR 色调表）
       const cSp=colorMatch(lab);
-      const o=Object.assign({},base,{col:cw,imgB:cImg,imgCN:IMAGE_B_CN[cImg]||cImg,enSp:SPICE_EN[cSp]||cSp});
+      const o=Object.assign({},base,{col:cw,imgB:cImg,imgEN:IMAGE_B_EN[cImg]||cImg,enSp:SPICE_EN[cSp]||cSp});
       return {t:fill(pickNR(TEMPLATES.color),o), s:cSp};
     }
     if(t==='print'){
-      if(lab==='豹纹/动物纹') return {t:fill(pick(TEMPLATES.printBold),Object.assign({},base,{p:lab})), s:''};
+      if(lab==='leopard/animal print') return {t:fill(pick(TEMPLATES.printBold),Object.assign({},base,{p:lab})), s:''};
       if(ALL_PRINT.indexOf(lab)>=0){
         const pImg=PRINT_IMG[lab]||'wind';
         const pSp=take([IMAGE_B[pImg]].filter(s=>all.indexOf(s)>=0));
-        const pPool=TEMPLATES.printOther.filter(tp=>{ if(tp.indexOf('用这个')>=0)return DISTINCT_PRINT.indexOf(lab)>=0; return true; });
-        return {t:fill(pickNR(pPool),Object.assign({},base,{p:lab,imgB:pImg,imgCN:IMAGE_B_CN[pImg]||pImg,enSp:SPICE_EN[pSp]||pSp})), s:pSp};
+        const pPool=TEMPLATES.printOther.filter(tp=>{ if(tp.indexOf('rarely seen')>=0)return DISTINCT_PRINT.indexOf(lab)>=0; return true; });
+        return {t:fill(pickNR(pPool),Object.assign({},base,{p:lab,imgB:pImg,imgEN:IMAGE_B_EN[pImg]||pImg,enSp:SPICE_EN[pSp]||pSp})), s:pSp};
       }
       const sSp=take([]); // 纯色 → 香味句（意象跟香料走）
       return {t:scentOf(sSp), s:sSp};
@@ -336,14 +345,14 @@ function genCopy(a){
     }
     if(t==='garment'){
       const g=lab;
-      const gPool=base.col?['这件{g}很衬你。','{col}{g}，耐看。','这{g}有味道。','穿{g}，有品味。']
-        :['这件{g}很衬你。','这{g}有味道。','穿{g}，有品味。'];
+      const gPool=base.col?['This {g} suits you.','{col} {g} — easy on the eye.','This {g} has character.','{g} — good taste.']
+        :['This {g} suits you.','This {g} has character.','{g} — good taste.'];
       const tpl=pickNR(gPool);
       // 款式句若带颜色（{col}），香料也要匹配该颜色
       const gSp=tpl.indexOf('{col}')>=0?colorMatch(base.col):take([]);
       const gImg=SPICE_IMG[gSp]||base.imgB;
-      const gImgCN=IMAGE_B_CN[gImg]||base.imgCN;
-      return {t:fill(tpl,Object.assign({},base,{g,imgB:gImg,imgCN:gImgCN,enSp:SPICE_EN[gSp]||gSp})), s:gSp};
+      const gImgEN=IMAGE_B_EN[gImg]||base.imgEN;
+      return {t:fill(tpl,Object.assign({},base,{g,imgB:gImg,imgEN:gImgEN,enSp:SPICE_EN[gSp]||gSp})), s:gSp};
     }
     if(t==='scent'){ const sSp=take([]); return {t:scentOf(sSp), s:sSp}; }
     return null;
@@ -364,7 +373,7 @@ function genCopy(a){
   }
   // 5 句中段最后一句固定为「最后加点{香料}」
   const lastSp=take([]);
-  add('最后加点'+lastSp+'。', lastSp);
+  add('And a final touch of '+(SPICE_EN[lastSp]||lastSp)+'.', lastSp);
   // 收尾（两句）
   add(fill(pick(TEMPLATES.ending1),base),'');
   add(fill(TEMPLATES.ending2[0],base),'');
@@ -377,12 +386,12 @@ function attrSlotsFor(g){
   const slots=[];
   if(g.garment) slots.push({type:'garment',label:g.garment,score:3});
   if(g.fabric)  slots.push({type:'fabric', label:g.fabric, score:2.6});
-  if(g.pattern && g.pattern!=='纯色') slots.push({type:'print', label:g.pattern, score:2.2});
+  if(g.pattern && g.pattern!=='solid') slots.push({type:'print', label:g.pattern, score:2.2});
   return slots;
 }
-// g.style = {top,mid,base} 六风格香料池; g.colors = 中文色名数组; 返回 8 行 [{t,s}]
+// g.style = {top,mid,base} 六风格香料池; g.colors = 英文色名数组; 返回 8 行 [{t,s}]
 function makeCopy(g){
   const a={style:g.style||{}, colors:g.colors||[], slots:attrSlotsFor(g)};
   return genCopy(a);
 }
-window.COPY={RECIPES,STYLE_DEFS,pickVariant,makeCopy,SPICE_EN,SPICE_IMG,IMAGE_B,IMAGE_B_CN,MATERIAL_B,PRINT_IMG,SPICE_COLOR,COLOR_IMG};
+window.COPY={RECIPES,STYLE_DEFS,pickVariant,makeCopy,SPICE_EN,SPICE_IMG,IMAGE_B,IMAGE_B_EN,MATERIAL_B,PRINT_IMG,SPICE_COLOR,COLOR_IMG};

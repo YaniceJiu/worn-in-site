@@ -296,14 +296,14 @@ function trembleAnim(ms){ return new Promise(res=>{
    ============================================================ */
 async function runAll(replay){
   resetAll(replay);
-  await begin(P.TREM); SFX.play('tremble'); hint('衣橱轻轻颤动…'); await trembleAnim(780); await sleep(200);
+  await begin(P.TREM); SFX.play('tremble'); hint('The wardrobe trembles…'); await trembleAnim(780); await sleep(200);
   // 烟雾①（段1，播完一次即隐藏）
   await begin(P.SMOKE); hint(null);
   const smoke=SEG[0].find(l=>l.kind==='gif'&&(l.gif==='smoke_mirror'||l.gif==='smoke'));
   if(smoke){ await playOnce(smoke); skipGif.add(smoke.id); } else await sleep(2500);
   if(replay){
     // 重播：保留照片与结果，跳过点击/拍照/AI
-    await begin(P.MTREM); hint('旧衣新香，再次为你调香…','✨'); await sleep(1600);
+    await begin(P.MTREM); hint('Old clothes, new scent — blending again…','✨'); await sleep(1600);
   }else{
     // 烟雾散去后直接开摄像头（无需镜子漂浮/溶解过渡）
     let uploaded=false;
@@ -351,8 +351,7 @@ async function runAll(replay){
   const buy = await askBuy();
   if(buy){
     await showPay();                 // Chase 付款码 + 手动确认收到钱
-    await lowerLiquid();             // 液面下降（三瓶一起倒放，忽略毛球）
-    sendToPump(AI && AI.style);      // 付款确认后：再泵转 1s
+    await lowerLiquid();             // 液面下降（三瓶一起倒放；泵转 2s 在 lowerLiquid 内）
     await drawerBottle();            // 拉开抽屉 + 取香水
   }
   // 结果长条 + 二维码占位 + 15 秒后回待机
@@ -393,7 +392,7 @@ function waitMirrorClick(){
 /* ---------- 拍照流程 ---------- */
 function shootFlow(){
   if(DEMO){
-    toast('演示模式 · 自动使用示例照片');
+    toast('Demo mode · using a sample photo');
     return makeDemoPhoto().then(()=>'ok');
   }
   return showCam();
@@ -405,21 +404,22 @@ function hideAI(){ $('aiLoading').classList.add('hidden'); }
 async function waitAI(){
   if(!analyzePromise){ analyzePromise=runAI(); }
   if(AI) return;
-  showAILoading('正在等待 AI 完成调香…');
+  showAILoading('Waiting for the AI to finish blending…');
   try{ await analyzePromise; }catch(e){ /* handled in runAI */ }
   hideAI();
 }
 /* ---------- 电脑泵桥接：AI 风格 → 本机 pump_bridge.py → ESP32 泵 ---------- */
-const PUMP_MAP={野性风:1,办公风格:2,甜美少女:3,运动风:4,森系居家:5,'晚礼服/名媛':6};
+const PUMP_MAP={wild:1,office:2,sweet:3,sporty:4,'natural/home':5,evening:6};
 const PUMP_URL='/pump'; // 同源：本机或局域网其它设备打开，都打到这台电脑的 server.py
-async function sendToPump(style){
+async function sendToPump(style, duration){
   const pump=PUMP_MAP[style];
   if(!pump){ console.warn('[pump] 未知风格:', style); return; }
+  const d=Math.max(0.1, duration||1);
   try{
-    const r=await fetch(PUMP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({style,pump})});
+    const r=await fetch(PUMP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({style,pump,duration:d})});
     const j=await r.json();
     console.log('[pump]', j);
-    if(j&&j.ok) toast('已通知调香机：'+style+' → '+pump+' 号泵');
+    if(j&&j.ok) toast('Sent to the machine: '+style+' → pump '+pump+' · '+d+'s');
   }catch(e){ console.warn('[pump] 桥接未启动或串口未接:', e.message); }
 }
 async function runAI(){
@@ -431,9 +431,9 @@ async function runAI(){
   return AI;
 }
 function askRetry(e){ return new Promise(res=>{
-  showAILoading('AI 分析失败：'+(e&&e.message?e.message:'未知错误'));
+  showAILoading('AI analysis failed: '+(e&&e.message?e.message:'unknown error'));
   const box=document.createElement('div'); box.id='aiRetryWrap';
-  box.innerHTML='<button id="aiRetryBtn">重试</button>';
+  box.innerHTML='<button id="aiRetryBtn">Retry</button>';
   $('aiErr').appendChild(box);
   $('aiRetryBtn').onclick=async()=>{ hideAI(); res(await runAI()); };
 }); }
@@ -446,7 +446,7 @@ function ensureKey(){
     kp.classList.remove('hidden'); inp.value='';
     // 桌面端自动聚焦；移动端不聚焦，避免一进站就弹键盘挡住画面
     if(window.matchMedia && window.matchMedia('(pointer:fine)').matches){ try{ inp.focus(); }catch(e){} }
-    toast('请先填入 OpenAI API Key（只存本机浏览器）');
+    toast('Please enter your OpenAI API key (stored in this browser only)');
     const done=()=>{
       const v=inp.value.trim(); if(!v) return;
       setKey(v);
@@ -464,31 +464,31 @@ function ensureKey(){
 
 async function analyzePhoto(){
   const key=await ensureKey();
-  if(!photo.crop) throw new Error('没有照片');
+  if(!photo.crop) throw new Error('No photo yet');
   const b64=photo.crop.toDataURL('image/jpeg',0.9).split(',')[1];
-  const user='分析这张衣服照片，只输出一个 JSON，字段如下：\n'+
-   '{"gar":"<款式>","fabric":"<材质>","pattern":"<印花>","collar":"<领口>","colors":[{"name":"<颜色名>","hex":"<#rrggbb>"},{"name":"<颜色名>","hex":"<#rrggbb>"},{"name":"<颜色名>","hex":"<#rrggbb>"}],"style":"<风格>"}\n'+
-   '铁规则：\n'+
-   '- 必须根据图片真实内容填写，禁止套用或照抄任何示例值（上面只是字段占位符）。\n'+
-   '- colors 是「衣服本身」的 3 个主色，按所占面积从大到小；背景、头发、皮肤、环境一律不算衣服颜色。\n'+
-   '- 每个 hex 必须是图片里衣服上真实出现的色值（不是凭空想象）。\n'+
-   '- name 只能取：黑色|深灰|灰色|浅灰|白色|米色|米黄|驼色|卡其|棕色|深棕|藏青|深蓝|蓝色|天蓝|浅蓝|牛仔蓝|墨绿|橄榄绿|军绿|暗橄榄绿|绿色|浅绿|酒红|红色|玫红|粉色|浅粉|橙色|黄色|紫色|深紫|淡紫\n'+
-   '- gar∈连衣裙|上衣|衬衫|外套|夹克|卫衣|毛衣|T恤|背心|长裤|短裤|半身裙|长裙|短裙|牛仔|其他\n'+
-   '- 款式判断优先规则：只要看到是裙子/连身裙装（哪怕只拍到上半身、没拍到裙摆），一律判「连衣裙」；只有明显是分开的上衣+下装时才判「上衣」。\n'+
-   '- fabric∈棉|丝绸/缎面|棉麻/亚麻|针织/毛衣|毛绒|牛仔|皮革|科技/运动面料|其他\n'+
-   '- pattern∈纯色|条纹|格纹|波点|碎花|豹纹/动物纹|扎染|印花|无\n- collar∈圆领|V领|高领|方领|翻领|衬衫领|无领\n'+
-   '- style∈野性风|甜美少女|运动风|办公风格|森系居家|晚礼服/名媛\n- 只输出 JSON，不要任何解释或注释。';
+  const user='Analyse this clothing photo. Output ONE JSON object with exactly these fields:\n'+
+   '{"gar":"<garment>","fabric":"<fabric>","pattern":"<pattern>","collar":"<collar>","colors":[{"name":"<colour name>","hex":"<#rrggbb>"},{"name":"<colour name>","hex":"<#rrggbb>"},{"name":"<colour name>","hex":"<#rrggbb>"}],"style":"<style>"}\n'+
+   'Hard rules:\n'+
+   '- Fill every field from what is actually in the photo. Never copy or reuse the example values above (they are only field placeholders).\n'+
+   '- colors = the 3 dominant colours OF THE GARMENT itself, largest area first. Background, hair, skin and surroundings never count as garment colours.\n'+
+   '- Every hex must be a colour that genuinely appears on the garment in the photo (never invent one).\n'+
+   '- name must be exactly one of: black|dark grey|grey|light grey|white|beige|cream|camel|khaki|brown|dark brown|navy|dark blue|blue|sky blue|light blue|denim blue|dark green|olive|army green|deep olive|green|light green|wine red|red|rose red|pink|light pink|orange|yellow|purple|deep purple|lilac\n'+
+   '- gar must be exactly one of: dress|top|shirt|coat|jacket|sweatshirt|sweater|tee|tank|trousers|shorts|skirt|long dress|short skirt|denim|other\n'+
+   '- Garment rule: if it is a dress or any one-piece (even if only the top half is visible), always answer "dress". Only answer "top" when top and bottom are clearly separate garments.\n'+
+   '- fabric must be exactly one of: cotton|silk/satin|linen|knit/sweater|fleece|denim|leather|tech/sport fabric|other\n'+
+   '- pattern must be exactly one of: solid|stripe|check|polka dot|floral|leopard/animal print|tie-dye|print|none\n- collar must be exactly one of: crew|V-neck|turtleneck|square|lapel|shirt collar|collarless\n'+
+   '- style must be exactly one of: wild|sweet|sporty|office|natural/home|evening\n- Output JSON only. No explanation, no comments.';
   const body={model:'gpt-4o-mini',temperature:0.2,response_format:{type:'json_object'},
-    messages:[{role:'system',content:'你是服装调香师，看图后按要求只输出 JSON。'},{role:'user',content:[{type:'text',text:user},{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}}]}],
+    messages:[{role:'system',content:'You are a clothing perfumer. Read the photo and output JSON only.'},{role:'user',content:[{type:'text',text:user},{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}}]}],
     max_tokens:800};
   let resp;
   try{ resp=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)}); }
-  catch(e){ throw new Error('网络错误：'+(e.message||e)); }
+  catch(e){ throw new Error('Network error: '+(e.message||e)); }
   if(!resp.ok){ let t=''; try{t=await resp.text();}catch(_){} throw new Error('OpenAI '+resp.status+' '+(t||'').slice(0,160)); }
   const j=await resp.json();
   const content=((j.choices||[])[0]||{}).message||{}; const raw=(content.content||'').replace(/```json|```/g,'').trim();
   const g=JSON.parse(raw);
-  if(!g || typeof g!=='object' || !(g.gar||g.colors||g.style)) throw new Error('没识别到衣服，请重新拍一张');
+  if(!g || typeof g!=='object' || !(g.gar||g.colors||g.style)) throw new Error('Could not recognise a garment — please take another photo');
   return buildResult(g);
 }
 
@@ -507,10 +507,10 @@ function modifiersOfRecipe(recipe, seed){
   return selected;
 }
 function buildResult(g){
-  const styleName=(g.style||'').trim()==='晚礼服/名媛'?'晚礼服/名媛':(['野性风','甜美少女','运动风','办公风格','森系居家','晚礼服/名媛'].includes((g.style||'').trim())?(g.style).trim():'办公风格');
+  const styleName=(['wild','sweet','sporty','office','natural/home','evening'].includes((g.style||'').trim()))?(g.style).trim():'office';
   const defs=COPY.STYLE_DEFS.find(s=>s.name===styleName)||COPY.STYLE_DEFS[3];
   const colors=(g.colors||[]).slice(0,3);
-  while(colors.length<3) colors.push({name:'白色',hex:'#f2efe8'});
+  while(colors.length<3) colors.push({name:'white',hex:'#f2efe8'});
   const attr={color:(colors[0]||{}).name||'',print:g.pattern||'',fabric:g.fabric||'',garment:g.gar||''};
   const variant=COPY.pickVariant(styleName,attr);
   const rec=JSON.parse(JSON.stringify((COPY.RECIPES[styleName]&&COPY.RECIPES[styleName][variant])||{top:[],mid:[],base:[]}));
@@ -529,42 +529,42 @@ function buildResult(g){
   return {style:styleName,variant,recipe:rec,modifierOptions,colors,gar:g.gar,fabric:g.fabric,pattern:g.pattern,collar:g.collar,copy:copyRaw.map(x=>x.t), segLines};
 }
 async function exampleAI(){
-  return buildResult({gar:'连衣裙',fabric:'丝绸/缎面',pattern:'碎花',collar:'圆领',
-    colors:[{name:'浅粉',hex:'#f0a6b8'},{name:'白色',hex:'#f2efe8'},{name:'浅灰',hex:'#cfd0d6'}],style:'甜美少女'});
+  return buildResult({gar:'dress',fabric:'silk/satin',pattern:'floral',collar:'crew',
+    colors:[{name:'light pink',hex:'#f0a6b8'},{name:'white',hex:'#f2efe8'},{name:'light grey',hex:'#cfd0d6'}],style:'sweet'});
 }
 
 /* ---------- LLM 香语重写：配方固定，基于衣服特征+意象连接写自然句（失败回退模板） ---------- */
 function buildScentPrompt(){
   const rec=AI.recipe;
-  const colors=(AI.colors||[]).map(c=>c.name).join('、');
-  return '你是调香师，正在为顾客调香，会一边调一边自言自语 5 句。\n'+
-    '顾客衣服：款式='+(AI.gar||'')+'，领型='+(AI.collar||'')+'，材质='+(AI.fabric||'')+'，印花='+(AI.pattern||'')+'，主色='+colors+'，风格='+(AI.style||'')+'。\n'+
-    '固定配方：前调='+(rec.top||[]).join('、')+'；中调='+(rec.mid||[]).join('、')+'；后调='+(rec.base||[]).join('、')+'。\n'+
-    '第一步，先判断这件衣服「最抓眼的一个特征」，只能四选一：①它的某个颜色 ②它的某种印花 ③它的外型轮廓（款式+领型）④它的材质；再选一个「不同类」的特征作次特征。\n'+
-    '第二步，按顺序写 5 句：\n'+
-    '- 第1句：看到主特征（「我看到了…」），带出第一种香料。\n'+
-    '- 第2句：主特征让你想起一个意象画面（「令我想起…」），落到第二种香料。\n'+
-    '- 第3句：说到次特征，换一种说法，落到第三种香料。\n'+
-    '- 第4句：就次特征或整体感觉再补一句，落到第四种香料。\n'+
-    '- 第5句：收尾（「最后加一味XX」），落到第五种香料。\n'+
-    '- 第6句：三瓶液体调和成香水时说的话（像「让我来调和」「再配平，成一瓶香水」），s 留空。\n'+
-    '意象要求（很重要）：\n'+
-    '- 5 句里必须有 3 句带意象（像「青绿色的卫衣，如同葡萄园」这种具体画面/比喻）。\n'+
-    '- 意象必须和衣服的质感/温度/重量同调（这条最重要，错了就重写）：\n'+
-    '  丝绸/缎面=滑·凉·亮 → 露水、月光、流水、玻璃；棉麻=轻·透气 → 薄雾、晨风、晒暖的床单；皮革=硬·韧·旧 → 陈年木、旧书皮、烟草；毛绒/针织=软·糯·暖 → 云、棉絮、奶沫、初雪。\n'+
-    '- 面料是软的，意象也必须是软的；绝不要用「橡树、岩石、铁」这类硬重意象去配柔软面料。\n'+
-    '- 意象要具体有画面，不要抽象空话。\n'+
-    '- 13 个字是上限也是空间：在 13 字内把画面写满，别浪费在「很、真的、特别」这种废词上。\n'+
-    '硬性要求：\n'+
-    '- 每句 ≤13 个汉字，最多 1 个逗号。\n'+
-    '- 口语自然，不要文绉绉、不要书面腔、不要英文。\n'+
-    '- 每句自然带出它的香料（写味道感；香料名可出现在句中或 s 字段）。\n'+
-    '- 5 句香料全部从固定配方里选，尽量不重复；s 必须是配方里的中文香料名。\n'+
-    '- 香料和衣服质感冲突时（比如柔软面料 + 木质香料），用反差写法，不要硬比喻：写「料子这么软，却透着一股木香」，不要写「柔软面料，如同古老的橡树」。\n'+
-    '- 禁止：连续两句同句式、每句都「我」开头、排比、说明书腔。\n'+
-    '句式参考（只示范「短 + 有意象」，香料换成你本次配方）：\n'+
-    '{"lines":[{"t":"看到了青绿卫衣，像葡萄园。","s":"青草"},{"t":"让我想起雨后的草地。","s":"海水"},{"t":"翻领利落，藏红花衬。","s":"藏红花"},{"t":"料子软，像晒暖的云。","s":"白麝香"},{"t":"最后加点香根草。","s":"香根草"},{"t":"再配平，成一瓶香水。","s":""}]}\n'+
-    '只输出 JSON：{"lines":[{"t":"句子","s":"香料"}, ...]} 共 6 条，不要多余文字。';
+  const colors=(AI.colors||[]).map(c=>c.name).join(', ');
+  return 'You are a perfumer blending a scent for a customer, thinking out loud. Write 6 short spoken lines.\n'+
+    "Customer's garment: garment="+(AI.gar||'')+', collar='+(AI.collar||'')+', fabric='+(AI.fabric||'')+', pattern='+(AI.pattern||'')+', main colours='+colors+', style='+(AI.style||'')+'.\n'+
+    'Fixed recipe — top: '+(rec.top||[]).join(', ')+'; heart: '+(rec.mid||[]).join(', ')+'; base: '+(rec.base||[]).join(', ')+'.\n'+
+    'Step 1: choose THE single most eye-catching feature of this garment — exactly one of (1) one of its colours, (2) its pattern, (3) its silhouette (garment + collar), (4) its fabric. Then choose a second feature of a DIFFERENT kind.\n'+
+    'Step 2: write 6 lines in order:\n'+
+    '- Line 1: react to the main feature ("I see ...") and lead into the 1st note.\n'+
+    '- Line 2: an image the main feature brings to mind ("it reminds me of ..."), landing on the 2nd note.\n'+
+    '- Line 3: move to the second feature, phrased differently, landing on the 3rd note.\n'+
+    '- Line 4: one more line on the second feature or the overall feel, landing on the 4th note.\n'+
+    '- Line 5: close with "and a final touch of X", landing on the 5th note.\n'+
+    '- Line 6: what you say as the three liquids blend into one perfume (e.g. "let me bring them together", "balanced — one bottle of perfume"). Leave "s" empty.\n'+
+    'Imagery requirements (important):\n'+
+    '- At least 3 of the 5 lines must carry a concrete image (a real picture or simile, e.g. "a dark green sweatshirt, like a vineyard").\n'+
+    "- Imagery must match the fabric's texture / temperature / weight (this matters most; if it clashes, rewrite it):\n"+
+    '  silk/satin = smooth, cool, bright -> dew, moonlight, running water, glass; linen = light, breathable -> thin mist, morning breeze, sun-warmed bedsheets; leather = hard, tough, aged -> old wood, worn book cover, tobacco; fleece/knit = soft, plush, warm -> clouds, cotton fluff, milk foam, first snow.\n'+
+    '- If the fabric is soft the imagery must be soft too; never pair soft fabric with hard, heavy imagery such as oak, rock or iron.\n'+
+    '- Imagery must be concrete and visual, never abstract filler.\n'+
+    '- 12 words per line is the budget: fill the picture within it, and do not waste words on filler such as "very", "really", "especially".\n'+
+    'Hard requirements:\n'+
+    '- Each line: at most 12 words and at most 1 comma.\n'+
+    '- Natural spoken English, warm and understated — not written, not formal.\n'+
+    '- Each line should naturally bring out its note (describe the smell; the note name may appear in the line or in "s").\n'+
+    '- All 5 notes must come from the fixed recipe above and should not repeat. "s" MUST be the exact note name copied from that recipe (keep it in the original Chinese).\n'+
+    '- If a note clashes with the fabric (e.g. a soft fabric with a woody note), write it as contrast rather than forcing a simile: write "the cloth is so soft, and yet there is wood in it", not "soft fabric, like an ancient oak".\n'+
+    '- Forbidden: two lines in a row with the same structure, every line starting with "I", parallelism, or instruction-manual tone.\n'+
+    'Style reference (shows only "short + with imagery"; swap in your own notes):\n'+
+    '{"lines":[{"t":"A dark green sweatshirt, like a vineyard.","s":"青草"},{"t":"It reminds me of grass after rain.","s":"海水"},{"t":"Clean lapels; saffron suits it.","s":"藏红花"},{"t":"The cloth is soft, like a sun-warmed cloud.","s":"白麝香"},{"t":"And a final touch of vetiver.","s":"香根草"},{"t":"Balanced now — one bottle of perfume.","s":""}]}\n'+
+    'Output JSON only: {"lines":[{"t":"sentence","s":"note"}, ...]} with 6 items. No extra text.';
 }
 async function genScentLinesLLM(){
   if(!AI || !AI.recipe) return;
@@ -574,7 +574,7 @@ async function genScentLinesLLM(){
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({model:'gpt-4o-mini',temperature:0.9,response_format:{type:'json_object'},
-        messages:[{role:'system',content:'你是中文香语文案写手，只输出 JSON。'},{role:'user',content:buildScentPrompt()}],
+        messages:[{role:'system',content:'You are an English scent-copy writer. Output JSON only.'},{role:'user',content:buildScentPrompt()}],
         max_tokens:500})
     });
     if(!resp.ok) return;
@@ -591,12 +591,12 @@ async function genScentLinesLLM(){
         return -1;
       };
       const tmpl=(AI.segLines||[]).slice(0,5);
-      // 合格判定：≤13字 且 逗号≤1 且非空；不合格整句丢弃（绝不截断成半句）
+      // 合格判定：≤1 个逗号、≤70 字符、非空；不合格整句丢弃（绝不截断成半句）
       const clean=t=>{
-        let s=String(t||'').replace(/,/g,'，').trim();
-        const commas=(s.match(/[，,]/g)||[]).length;
-        if(!s || commas>1 || s.length>13) return '';
-        return s.replace(/[，,。.！!？?~～…]+$/,'');
+        let s=String(t||'').trim();
+        const commas=(s.match(/,/g)||[]).length;
+        if(!s || commas>1 || s.length>70) return '';
+        return s.replace(/[,.!?~…]+$/,'');
       };
       const got=o.lines.map(l=>({t:clean(l&&l.t), s:String((l&&l.s)||'').trim()}))
         .filter(l=>l.t && noteOf(l.s)>=0).slice(0,5);
@@ -615,7 +615,7 @@ async function genScentLinesLLM(){
 
 /* ---------- 段4：毛球染液，每句涨1/5、句间随机涨1/5、最后补满 ---------- */
 async function yarnFlow(){
-  sendToPump(AI && AI.style);   // 制香动画开始：泵转 1s
+  sendToPump(AI && AI.style, 0.5);   // 液面升高：对应泵转 0.5s
   hint(null);
   const yarns=SEG[3].filter(l=>l.kind==='gif'&&l.id.startsWith('yarn'));
   if(!yarns.length){ await sleep(1200); return; }
@@ -634,8 +634,8 @@ async function yarnFlow(){
   hint(null);
   // 开场白两句（毛球未上色画面，与 LLM 加载并行）
   const llmP=genScentLinesLLM();
-  floatLine('你好啊，客人。', 1700);
-  const opening=(async()=>{ await sleep(1500); floatLine('让我来为你调香。', 1900); })();
+  floatLine('Hello there.', 1700);
+  const opening=(async()=>{ await sleep(1500); floatLine('Let me blend something for you.', 1900); })();
   await Promise.race([Promise.all([llmP, opening]), sleep(6000)]);
   // 飘完字：上色（每瓶一个主色）
   yarnTint={};
@@ -665,7 +665,7 @@ async function yarnFlow(){
   let maxRem=0;
   yarns.forEach((L,i)=>{ const rem=5-level[i]; if(rem>maxRem) maxRem=rem; });
   const fillDur=Math.max(900, maxRem*stepDur*0.8);
-  const harmony=(AI && AI.harmonyLine) ? AI.harmonyLine : '让我来调和。';
+  const harmony=(AI && AI.harmonyLine) ? AI.harmonyLine : 'Let me bring them together.';
   floatLine(harmony, Math.max(1200, fillDur));
   await Promise.all(yarns.map(L=>animateYarnStep(L, gifState[L.id].f, end, fillDur)));
   await sleep(300);
@@ -674,6 +674,7 @@ async function yarnFlow(){
 /* ---------- 液面下降：付款后把三瓶液体倒放一遍（忽略毛球） ---------- */
 async function lowerLiquid(){
   await begin(P.YARN); hint(null); clearFX();
+  sendToPump(AI && AI.style, 2);   // 液面下降：对应泵转 2s
   const yarns=SEG[3].filter(l=>l.kind==='gif'&&l.id.startsWith('yarn'));
   if(!yarns.length){ await sleep(800); return; }
   const g=META[yarns[0].gif]; if(!g){ await sleep(800); return; }
@@ -681,7 +682,7 @@ async function lowerLiquid(){
   const dur=sumDelays(yarns[0].gif,yarns[0].f0,yarns[0].f1,yarns[0].speed);
   const stepDur=Math.max(1100, dur/5*1.4);
   const lowerDur=Math.max(1500, stepDur*4);
-  floatLine('这就装瓶。', lowerDur);
+  floatLine('Bottling it now.', lowerDur);
   const t0=performance.now();
   await new Promise(res=>{
     (function tick(){
@@ -734,14 +735,14 @@ function floatLine(text,durMs){
   requestAnimationFrame(()=>el.classList.add('in'));
   setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); },(durMs||3200)+150);
 }
-function showSpiceTags(){  document.querySelectorAll('.spiceTag').forEach(e=>e.remove());  const tags=[['🌅 前调',AI.recipe.top||[]],['☀️ 中调',AI.recipe.mid||[]],['🌙 后调',AI.recipe.base||[]]];
+function showSpiceTags(){  document.querySelectorAll('.spiceTag').forEach(e=>e.remove());  const tags=[['🌅 Top',AI.recipe.top||[]],['☀️ Heart',AI.recipe.mid||[]],['🌙 Base',AI.recipe.base||[]]];
   const yarns=SEG[3].filter(l=>l.kind==='gif'&&l.id.startsWith('yarn')).slice(0,3);
   const r=canvasRect();
   tags.forEach((tg,i)=>{
     const L=yarns[i]; if(!L) return;
     const cx=(L.x/100*W+L.w/100*W/2)/W, cy=(L.y/100*H)/H;
     const el=document.createElement('div'); el.className='spiceTag';
-    const rows=tg[1].map(n=>'<div class="sr">'+n+'</div>').join('');
+  const rows=tg[1].map(n=>'<div class="sr">'+(COPY.SPICE_EN[n]||n)+'</div>').join('');
     el.innerHTML='<div class="nt">'+tg[0]+'</div><div class="sp">'+rows+'</div>';
     $('fx').appendChild(el);
     el.style.left=(r.left+cx*r.width)+'px';
@@ -783,8 +784,9 @@ function showModifiers(){
     const b=document.createElement('button');
     b.className='modBtn'+(EDIT_MODE?' edit':'');
     b.dataset.letter=label;
+    b.dataset.en=COPY.SPICE_EN[label]||label;
     b.dataset.plus='1';
-    b.textContent='＋'+label;
+    b.textContent='＋'+b.dataset.en;
     b.style.left=p.x+'%'; b.style.top=p.y+'%';
     $('fx').appendChild(b);
     if(EDIT_MODE) makeModDraggable(b, d.id);
@@ -793,9 +795,10 @@ function showModifiers(){
 }
 function toggleMod(b){
   const L=b.dataset.letter||'?';
+  const en=b.dataset.en||L;
   const adding=b.dataset.plus==='1';   // 当前是“＋” → 点击执行添加
   b.dataset.plus=adding?'0':'1';
-  b.textContent=adding?'−'+L:'＋'+L;
+  b.textContent=adding?'−'+en:'＋'+en;
   b.classList.toggle('minus', b.dataset.plus==='0');
   applyModifier(L, adding);
 }
@@ -830,7 +833,7 @@ function makeModDraggable(el,id){
     dragging=false;
     if(moved){
       saveModPos(id, parseFloat(el.style.left), parseFloat(el.style.top));
-      toast(id+' 位置已存 x='+parseFloat(el.style.left).toFixed(1)+'% y='+parseFloat(el.style.top).toFixed(1)+'%');
+      toast(id+' saved at x='+parseFloat(el.style.left).toFixed(1)+'% y='+parseFloat(el.style.top).toFixed(1)+'%');
     }else{
       toggleMod(el);
     }
@@ -847,28 +850,28 @@ async function editPreview(){
   const gate=document.getElementById('catGate'); if(gate) gate.style.display='none';
   if(!document.getElementById('editBanner')){
     const banner=document.createElement('div'); banner.id='editBanner';
-    banner.textContent='⚠ 摆放模式（?edit=1）—— 拖动 A/B 按钮调位置 · 滚轮调大小';
+    banner.textContent='⚠ Placement mode (?edit=1) — drag the A/B buttons to position · scroll to resize';
     document.body.appendChild(banner);
   }
   AI=await exampleAI();
   await begin(P.FINAL); clearFX(); hint(null);
   showSpiceTags();
   showModifiers();
-  bottom('<button onclick="PLAY.retry()">🔄 再试一次</button><button class="ghost" onclick="PLAY.reshoot()">👕 换一件衣服</button>');
+  bottom('<button onclick="PLAY.retry()">🔄 Try again</button><button class="ghost" onclick="PLAY.reshoot()">👕 Another garment</button>');
 }
 
 /* ============================================================
    制香结果 → 取香卡 → 买下 → 付款 → 结果长条
    ============================================================ */
 function askSmellCard(){
-  bottom('<button id="smellCard">👃 试闻 · 取香卡</button>');
+  bottom('<button id="smellCard">👃 Smell it · take a card</button>');
   return new Promise(res=>{
     $('smellCard').onclick=()=>res();
   });
 }
 function askLikeIt(){
   clearFX(); bottom(null);
-  hint('you like it?','喜欢这次的香吗？');
+  hint('you like it?','Do you like this scent?');
   bottom('<button id="likeIt1">like</button><button id="likeIt2">so, so</button><button id="likeIt3">don\'t like</button>');
   return new Promise(res=>{
     $('likeIt1').onclick=()=>res('like');
@@ -923,14 +926,14 @@ async function playBottleOut(){
 }
 async function drawerCard(){
   clearFX(); bottom(null);
-  hint('抽屉轻轻拉开…','请取走你的香卡');
+  hint('The drawer slides open…','Please take your scent card');
   await playCardOut();   // 完整视频（抽屉打开 + 拿出卡片）
   await sleep(1200);
 }
 function askBuy(){
   clearFX(); bottom(null);
-  hint('是否花 $35 买下这瓶香水？','Chase 付款');
-  bottom('<button id="buyNo">不用了 · 扫码取配方</button><button id="buyYes">是 · 买下</button>');
+  hint('Take this bottle home for $35?','Pay with Chase');
+  bottom('<button id="buyNo">No thanks · scan for the recipe</button><button id="buyYes">Yes · buy it</button>');
   return new Promise(res=>{
     $('buyNo').onclick=()=>res(false);
     $('buyYes').onclick=()=>res(true);
@@ -940,9 +943,9 @@ function showPay(){
   return new Promise(res=>{
     clearFX(); bottom(null); hint(null);
     const el=document.createElement('div'); el.className='payBox';
-    el.innerHTML='<div class="payTitle">扫码付款 · Chase</div><div class="payQr" id="payQr"><span class="payLoading">加载中…</span></div><div class="payAmt">$35.00</div><div class="payStatus" id="payStatus">等待扫码…</div>';
+    el.innerHTML='<div class="payTitle">Scan to pay · Chase</div><div class="payQr" id="payQr"><span class="payLoading">Loading…</span></div><div class="payAmt">$35.00</div><div class="payStatus" id="payStatus">Waiting for scan…</div>';
     $('fx').appendChild(el);
-    bottom('<button id="payDone">我已收到付款（手动确认）</button>');
+    bottom('<button id="payDone">I have received the payment (confirm manually)</button>');
     let done=false, pollTimer=null;
     const finish=()=>{ if(done) return; done=true; if(pollTimer) clearInterval(pollTimer); document.querySelectorAll('.payBox').forEach(e=>e.remove()); res(); };
     $('payDone').onclick=finish;
@@ -955,30 +958,30 @@ function showPay(){
         if(d.ok && d.url){
           qr.innerHTML='';
           new QRCode(qr,{text:d.url,width:230,height:230,correctLevel:QRCode.CorrectLevel.M});
-          st.textContent='等待付款…';
+          st.textContent='Waiting for payment…';
           pollTimer=setInterval(async()=>{
             try{
               const s=await (await fetch('/payment-status?id='+encodeURIComponent(d.id))).json();
               if(s.status==='paid'){
-                st.textContent='✓ 已收到付款';
+                st.textContent='✓ Payment received';
                 setTimeout(finish,1200);
               }
             }catch(e){}
           },2000);
         }else{
-          qr.textContent='未配置支付';
-          st.textContent=(d.error||'Stripe 未配置')+' · 可手动确认';
+          qr.textContent='Payment not configured';
+          st.textContent=(d.error||'Stripe not configured')+' · you can confirm manually';
         }
       }catch(e){
-        qr.textContent='支付服务不可用';
-        st.textContent='请手动确认';
+        qr.textContent='Payment service unavailable';
+        st.textContent='Please confirm manually';
       }
     })();
   });
 }
 async function drawerBottle(){
   clearFX(); bottom(null);
-  hint('抽屉轻轻拉开…','请取走你的香水');
+  hint('The drawer slides open…','Please take your perfume');
   await playBottleOut();   // 完整视频（抽屉打开 + 拿出香水）
   await sleep(1200);
 }
@@ -1079,8 +1082,8 @@ function renderResultStrip(gImg, qrImg){
   c.width=CW; c.height=CH; const x=c.getContext('2d');
   x.fillStyle='#1c1712'; x.fillRect(0,0,CW,CH);
   x.fillStyle='#e6c383'; x.textAlign='center';
-  x.font='bold 72px "PingFang SC","Microsoft YaHei",sans-serif';
-  x.fillText('Worn-In · 旧衣新香', CW/2, 140);
+  x.font='bold 72px Georgia,"Times New Roman",serif';
+  x.fillText('Worn-In · Old Clothes, New Scent', CW/2, 140);
   x.font='38px sans-serif'; x.fillStyle='#f0e3cd';
   x.fillText('Your Personal Scent', CW/2, 210);
   // ① 顾客照片（保持原始比例，不压缩）
@@ -1093,16 +1096,16 @@ function renderResultStrip(gImg, qrImg){
     x.drawImage(photo.img, (CW-dw)/2, py+(boxH-dh)/2, dw, dh);
   }else{
     x.strokeStyle='#5a4f42'; x.lineWidth=4; x.strokeRect((CW-boxW)/2, py, boxW, boxH);
-    x.fillStyle='#5a4f42'; x.fillText('[ 顾客照片占位 ]', CW/2, py+330);
+    x.fillStyle='#5a4f42'; x.fillText('[ customer photo placeholder ]', CW/2, py+330);
   }
   // ② 配方
   const cy=960;
   x.fillStyle='#e6c383'; x.textAlign='left'; x.font='bold 44px sans-serif';
-  x.fillText('你的配方', 120, cy);
+  x.fillText('Your Recipe', 120, cy);
   x.font='33px sans-serif'; x.fillStyle='#f0e3cd';
-  x.fillText('前调  '+((AI&&AI.recipe.top||[]).join(' · ')), 120, cy+66);
-  x.fillText('中调  '+((AI&&AI.recipe.mid||[]).join(' · ')), 120, cy+132);
-  x.fillText('后调  '+((AI&&AI.recipe.base||[]).join(' · ')), 120, cy+198);
+  x.fillText('Top    '+((AI&&AI.recipe.top||[]).map(n=>COPY.SPICE_EN[n]||n).join(' · ')), 120, cy+66);
+  x.fillText('Heart  '+((AI&&AI.recipe.mid||[]).map(n=>COPY.SPICE_EN[n]||n).join(' · ')), 120, cy+132);
+  x.fillText('Base   '+((AI&&AI.recipe.base||[]).map(n=>COPY.SPICE_EN[n]||n).join(' · ')), 120, cy+198);
   // ③ 衣服图（纸艺拼贴图，失败则空白占位）
   const gw=340, gh=240, gx0=120, gy0=1300;
   if(gImg && gImg.naturalWidth){
@@ -1112,7 +1115,7 @@ function renderResultStrip(gImg, qrImg){
   }else{
     x.strokeStyle='#5a4f42'; x.lineWidth=3; x.strokeRect(gx0, gy0, gw, gh);
     x.fillStyle='#5a4f42'; x.textAlign='center'; x.font='28px sans-serif';
-    x.fillText('[ 衣服图占位 ]', gx0+gw/2, gy0+gh/2+10);
+    x.fillText('[ garment image placeholder ]', gx0+gw/2, gy0+gh/2+10);
   }
   // ④ location
   x.textAlign='left'; x.fillStyle='#f0e3cd'; x.font='32px sans-serif';
@@ -1123,8 +1126,8 @@ function renderResultStrip(gImg, qrImg){
   }else{
     x.strokeStyle='#e6c383'; x.lineWidth=3; x.strokeRect(620, 1280, 260, 260);
     x.textAlign='center'; x.fillStyle='#e6c383'; x.font='28px sans-serif';
-    x.fillText('扫码存图', 750, 1350);
-    x.fillText('[ QR 占位 ]', 750, 1420);
+    x.fillText('Scan to save', 750, 1350);
+    x.fillText('[ QR placeholder ]', 750, 1420);
   }
   return c;
 }
@@ -1172,7 +1175,7 @@ function showCam(){
       if(busy) return; busy=true;
       shot.classList.add('hidden'); v.classList.remove('hidden'); doneBox.classList.add('hidden');
       const okCam=await startCam();
-      if(!okCam){ toast('摄像头不可用，请允许权限后重拍'); busy=false; return; }
+      if(!okCam){ toast('Camera unavailable — allow access, then take the photo again'); busy=false; return; }
       cd.classList.remove('hidden');
       for(let i=3;i>=1;i--){ num.textContent=i; restartRing(); await sleep(900); }
       cd.classList.add('hidden');
@@ -1283,7 +1286,7 @@ window.PLAY=PLAY;
   if(!getKey()) setTimeout(()=>{ ensureKey(); }, 350);
   // 猫眼门放行后才真正开始
   let started=false;
-  window.__startWornIn=()=>{ if(started) return; started=true; if(DEMO) toast('演示模式 · 自动跑完整流程'); runAll(false); };
+  window.__startWornIn=()=>{ if(started) return; started=true; if(DEMO) toast('Demo mode · running the full flow'); runAll(false); };
   if(EDIT_MODE){ editPreview(); }
   else if(!document.getElementById('catGate')) window.__startWornIn();
   else if(window.__unlocked) window.__startWornIn();

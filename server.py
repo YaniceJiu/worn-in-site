@@ -197,7 +197,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 pump = data.get('pump') or STYLE_TO_PUMP.get(style)
                 if not pump:
                     raise ValueError('未知风格: %r' % style)
-                result = send_pump(int(pump))
+                duration = float(data.get('duration', 1.0))
+                result = send_pump(int(pump), duration)
                 result['style'] = style
                 self._json(200, result)
             except Exception as e:

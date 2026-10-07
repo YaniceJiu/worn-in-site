@@ -1,0 +1,18 @@
+# Worn-In 香料板 · 水彩化提示词
+
+#> 这个文件被 tools/watercolor.py 直接读取。改这里就能改风格，不用动代码。
+#> 只认下面两行（positive: / negative:），其余以 # 开头的都是注释。
+#> 想一次出 40 张风格一致的图：同一个 positive、同一个 seed、同一个 denoise。
+
+positive: watercolor and ink botanical illustration of the object in the reference image, hand-painted, soft translucent washes, visible cold-press paper texture, thin loose ink outline, muted earthy palette, pigment granulation and slight bleeding, gentle bloom edges, cream off-white paper background, single object centred with generous negative space, vintage herbarium plate, quiet and understated, no text
+
+negative: photograph, photo, photorealistic, hyperrealistic, 3d render, cgi, octane, harsh shadows, glossy reflection, plastic, digital painting, airbrush, vector, clipart, flat design, gradient mesh, saturated neon colors, busy background, drop shadow, multiple objects, collage, text, letters, signature, watermark, logo, frame, border, vignette, blurry, lowres, jpeg artifacts, deformed
+
+# ── 参数（AUTOMATIC1111 img2img）──────────────────────────────────
+# 采样器   DPM++ 2M Karras
+# 步数     30
+# CFG      7
+# 尺寸     768 × 768（跟 assets/spices/_photo 一致，别改）
+# 重绘幅度 0.45   ← 最关键。0.35 只加纸纹和一点点色偏；0.45 明显水彩；0.6 以上会改形状
+# 种子     1234   ← 40 张用同一个，风格才统一
+# 缩放模式 只改尺寸（Just resize）或 潜空间放大（Latent upscale）

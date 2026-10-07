@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Worn-In Spice Board</title>
+<style>
+/* ── 版面尺寸：Letter 直式 8.5 × 11 in，5 列 × 8 行 ───────────────── */
+:root{
+  --pw:8.5in;  --ph:11in;  --pad:0.30in;
+  --gapx:0.07in; --gapy:0.055in;
+  --head:0.80in;            /* 标题区高度 */
+  --label:0.17in;           /* 名称行高度 */
+  --cols:5;    --rows:8;
+  --gridw: calc(var(--pw) - var(--pad)*2);
+  --gridh: calc(var(--ph) - var(--pad)*2 - var(--head));
+  --cellw: calc((var(--gridw) - var(--gapx)*(var(--cols) - 1)) / var(--cols));
+  --cellh: calc((var(--gridh) - var(--gapy)*(var(--rows) - 1)) / var(--rows));
+  /* 方块取「列宽」与「行高减去名称行」中的较小者，保证正方且不溢出 */
+  --img: min(var(--cellw), calc(var(--cellh) - var(--label)));
+
+  --ink:#2b2520;
+  --paper:#faf6ee;
+  --card:#fffdf9;
+  --muted:#8b8175;
+  --hand-serif:Georgia,"Times New Roman","Songti SC",serif;
+  --hand-sans:"Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#e7e2d8;color:var(--ink);font-family:var(--hand-sans)}
+
+/* ── 工具条（仅屏幕显示，不进 PDF）───────────────────────────── */
+.bar{
+  position:sticky;top:0;z-index:9;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  padding:9px 18px;background:#fffdf9;border-bottom:1px solid #cfc6b6;font-size:13px;
+  box-shadow:0 2px 10px rgba(0,0,0,.06)
+}
+.bar b{font-size:14px;letter-spacing:.4px}
+.bar label{display:flex;gap:6px;align-items:center;color:#5d5548;cursor:pointer}
+.bar select,.bar button{
+  font-family:var(--hand-sans);font-size:13px;color:var(--ink);background:#fff;
+  border:1.5px solid #cfc6b6;border-radius:9px;padding:4px 11px;cursor:pointer
+}
+.bar button:hover{background:#f3ede2}
+.bar .hint{margin-left:auto;color:var(--muted);font-size:12px}
+
+/* ── 板子本体：尺寸与 Letter 纸完全一致，所见即所得 ─────────────── */
+.board{
+  width:var(--pw); height:var(--ph); padding:var(--pad);
+  margin:16px auto; background:var(--paper); overflow:hidden;
+  box-shadow:0 6px 26px rgba(0,0,0,.14);
+}
+.head{height:var(--head);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.head h1{
+  margin:0; font-family:var(--hand-serif); font-size:19pt; font-weight:600;
+  letter-spacing:.16em; text-transform:uppercase
+}
+.head .sub{
+  margin:3pt 0 0; font-family:var(--hand-serif); font-style:italic;
+  font-size:10pt; letter-spacing:.06em; color:#5c5346
+}
+.head .rule{
+  width:1.05in;height:1.5pt;margin-top:5pt;background:var(--ink);
+  border-radius:60% 40% 55% 45%/50% 60% 40% 50%;transform:rotate(-.5deg)
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(var(--cols),var(--cellw));
+  grid-template-rows:repeat(var(--rows),var(--cellh));
+  column-gap:var(--gapx); row-gap:var(--gapy);
+}
+.cell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.frame{
+  position:relative; width:var(--img); height:var(--img); background:var(--card);
+  border:2pt solid var(--ink); overflow:hidden; display:grid; place-items:center;
+  border-radius:255px 14px 225px 16px/16px 225px 14px 255px;   /* 手绘不规则圆角 */
+}
+.frame img{width:100%;height:100%;object-fit:cover;display:block}
+.frame .ph{display:none;flex-direction:column;align-items:center;justify-content:center;gap:2pt;text-align:center;padding:3pt}
+.frame .ph .plus{font-size:13pt;line-height:1;color:#c3b8a6}
+.frame .ph .fn{font-size:4.5pt;color:#c3b8a6;word-break:break-all;line-height:1.25}
+.frame.empty{border-style:dashed;border-color:#c8bda9;background:#f8f4ec}
+.frame.empty .ph{display:flex}
+.idx{position:absolute;top:1.5pt;left:3.5pt;font-size:5.5pt;color:#c0b5a2;font-family:var(--hand-sans)}
+.name{
+  height:var(--label); display:flex; align-items:flex-start; justify-content:center;
+  padding-top:2.5pt; font-family:var(--hand-serif); font-size:8.5pt;
+  letter-spacing:.02em; text-align:center; line-height:1.1
+}
+.board.hide-idx .idx{display:none}
+
+/* ── 打印 / 导出 PDF ───────────────────────────────────────── */
+@page{ size:letter portrait; margin:0 }
+@media print{
+  html,body{background:#fff}
+  .bar{display:none!important}
+  .board{margin:0;box-shadow:none;
+         -webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .frame{ -webkit-print-color-adjust:exact; print-color-adjust:exact }
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <b>Worn-In Spice Board</b>
+  <label>Columns
+    <select id="cols">
+      <option value="5" selected>5 &times; 8</option>
+      <option value="4">4 &times; 10</option>
+      <option value="8">8 &times; 5</option>
+      <option value="10">10 &times; 4</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="tIdx" checked> Index numbers</label>
+  <button id="btnPrint">Print / Save as PDF</button>
+  <span class="hint">Letter portrait &middot; images load from assets/spices/</span>
+</div>
+
+<main class="board" id="board">
+  <div class="head">
+    <h1>Worn-In Spice Board</h1>
+    <p class="sub">10 varieties available for merchants to select</p>
+    <div class="rule"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+/* [显示的英文名, 图片文件名(不含扩展名)]
+   第二个字段只用于拼图片路径，不会作为文字渲染。 */
+const SPICES = [
+  ['citrus','柑橘'],            ['cardamom','小豆蔻'],        ['leather','皮革'],
+  ['saffron','藏红花'],         ['frankincense','焚香'],      ['incense','乳香'],
+  ['agarwood','沉香'],          ['tobacco','烟草木'],         ['white tea','白茶'],
+  ['bergamot','佛手柑'],        ['oakmoss','橡木苔'],         ['cedar','雪松'],
+  ['geranium','天竺葵'],        ['white musk','白麝香'],      ['sage','鼠尾草'],
+  ['cherry blossom','樱花'],    ['peach','蜜桃'],             ['orange blossom','橙花'],
+  ['gardenia','栀子花'],        ['marshmallow','棉花糖'],     ['vanilla','香草'],
+  ['patchouli','广藿香'],       ['sweet orange','甜橙'],      ['mint','薄荷'],
+  ['sea','海水'],               ['ylang','依兰'],             ['whisky','威士忌'],
+  ['pine needle','松针'],       ['nutmeg','肉豆蔻'],          ['bamboo','竹叶'],
+  ['lily of the valley','铃兰'],['oak','橡木'],               ['moss','苔藓'],
+  ['freesia','小苍兰'],         ['oolong','乌龙'],            ['rose absolute','玫瑰净油'],
+  ['magnolia','木兰'],          ['sandalwood','檀木'],        ['orris root','鸢尾根'],
+  ['fig leaf','无花果叶']
+];
+
+const grid = document.getElementById('grid');
+const board = document.getElementById('board');
+
+SPICES.forEach(function (sp, i) {
+  const en = sp[0], file = sp[1];
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+
+  const frame = document.createElement('div');
+  frame.className = 'frame';
+
+  const idx = document.createElement('span');
+  idx.className = 'idx';
+  idx.textContent = String(i + 1).padStart(2, '0');
+  frame.appendChild(idx);
+
+  const img = document.createElement('img');
+  img.src = 'assets/spices/' + encodeURIComponent(file) + '.png';
+  img.alt = en;
+  img.onerror = function () {
+    img.remove();
+    frame.classList.add('empty');
+  };
+  frame.appendChild(img);
+
+  const ph = document.createElement('div');
+  ph.className = 'ph';
+  ph.innerHTML = '<span class="plus">+</span><span class="fn">' + file + '.png</span>';
+  frame.appendChild(ph);
+
+  const name = document.createElement('div');
+  name.className = 'name';
+  name.textContent = en;
+
+  cell.appendChild(frame);
+  cell.appendChild(name);
+  grid.appendChild(cell);
+});
+
+function layout() {
+  const cols = parseInt(document.getElementById('cols').value, 10);
+  const rows = Math.ceil(SPICES.length / cols);
+  document.documentElement.style.setProperty('--cols', cols);
+  document.documentElement.style.setProperty('--rows', rows);
+}
+document.getElementById('cols').addEventListener('change', layout);
+document.getElementById('tIdx').addEventListener('change', function (e) {
+  board.classList.toggle('hide-idx', !e.target.checked);
+});
+document.getElementById('btnPrint').addEventListener('click', function () { window.print(); });
+
+// PDF 生成脚本靠这个标记确认图片都加载完了
+window.__ready = false;
+layout();
+window.addEventListener('load', function () {
+  const imgs = Array.from(document.images);
+  Promise.all(imgs.map(function (im) {
+    return im.complete ? Promise.resolve() : new Promise(function (r) { im.onload = im.onerror = r; });
+  })).then(function () { window.__ready = true; });
+});
+</script>
+</body>
+</html>
