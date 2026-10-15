@@ -1201,15 +1201,20 @@ function showCam(){
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
       const ctx2=shot.getContext('2d');
       if(vw>vh){
-        // 横屏流 → 旋转 90° 输出竖屏照片（自拍镜像）
+        // 横屏流 → 竖屏：先旋转 90°（临时canvas，不越界），再左右镜像
+        const tmp=document.createElement('canvas');
+        tmp.width=vh; tmp.height=vw;
+        const tc=tmp.getContext('2d');
+        tc.translate(vh,0); tc.rotate(Math.PI/2);
+        tc.drawImage(v,0,0,vw,vh);
         shot.width=vh; shot.height=vw;
-        ctx2.translate(vh,vw); ctx2.rotate(Math.PI/2);
-        ctx2.scale(-1,1);
-        ctx2.drawImage(v, 0, 0, vw, vh);
+        ctx2.translate(vh,0); ctx2.scale(-1,1);
+        ctx2.drawImage(tmp,0,0);
       }else{
+        // 竖屏流：直接镜像，不做旋转
         shot.width=vw; shot.height=vh;
         ctx2.translate(vw,0); ctx2.scale(-1,1);
-        ctx2.drawImage(v, 0, 0, vw, vh);
+        ctx2.drawImage(v,0,0,vw,vh);
       }
       await stopCam();
       v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
