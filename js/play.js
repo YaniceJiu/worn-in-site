@@ -614,6 +614,19 @@ async function genScentLinesLLM(){
 }
 
 /* ---------- 段4：毛球染液，每句涨1/5、句间随机涨1/5、最后补满 ---------- */
+// 毛球染色：3 个主色去重；纯色=三球同色；2色=主色×2+次色×1；3色=各一色
+function tintColors(){
+  const cols=(AI&&AI.colors)||[];
+  const uniq=[];
+  for(const c of cols){
+    const hex=(c&&c.hex)||'';
+    if(hex && uniq.indexOf(hex)<0) uniq.push(hex);
+  }
+  if(!uniq.length) return ['#f2efe8','#f2efe8','#f2efe8'];
+  if(uniq.length===1) return [uniq[0],uniq[0],uniq[0]];
+  if(uniq.length===2) return [uniq[0],uniq[0],uniq[1]];
+  return [uniq[0],uniq[1],uniq[2]];
+}
 async function yarnFlow(){
   sendToPump(AI && AI.style, 0.5);   // 液面升高：对应泵转 0.5s
   hint(null);
@@ -637,9 +650,10 @@ async function yarnFlow(){
   floatLine('Hello there.', 1700);
   const opening=(async()=>{ await sleep(1500); floatLine('Let me blend something for you.', 1900); })();
   await Promise.race([Promise.all([llmP, opening]), sleep(6000)]);
-  // 飘完字：上色（每瓶一个主色）
+  // 飘完字：上色（去重后主色重复填充，纯色=三球同色）
   yarnTint={};
-  yarns.forEach((L,i)=>{ const hex=(AI.colors[i%3]||{}).hex; if(hex) yarnTint[L.id]=hex; });
+  const tints=tintColors();
+  yarns.forEach((L,i)=>{ const hex=tints[i]; if(hex) yarnTint[L.id]=hex; });
   const level=yarns.map(()=>0);
   const seg=(AI.segLines||[]).slice(0,5);
   while(seg.length<5) seg.push({t:'',s:'',bottle:-1});
@@ -882,13 +896,14 @@ function askLikeIt(){
 function setupYarns(segArr, empty){
   // 三瓶液体：静止在最后一帧（empty=true 时空液面）+ 程序上色（继承段4的 AI 颜色）
   const yarns=segArr.filter(l=>l.kind==='gif'&&l.id.startsWith('yarn'));
+  const tints=tintColors();
   yarns.forEach((L,i)=>{
     const g=META[L.gif]; if(!g) return;
     const end=L.f1==null?g.frames-1:Math.min(L.f1,g.frames-1);
     const start=Math.max(1, Math.min(L.f0||0, g.frames-1));
     const f=empty?start:end;
     gifState[L.id]={f,acc:0,play:false,start:f,end,loops:1,cb:null};
-    const hex=(AI&&AI.colors&&AI.colors[i%3]||{}).hex;
+    const hex=tints[i];
     if(hex) yarnTint[L.id]=hex;
   });
 }
@@ -1181,10 +1196,18 @@ function showCam(){
       cd.classList.add('hidden');
       // 先按竖屏构图把视频画进 shot，再关摄像头（关后再画会黑屏）
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
-      shot.width=vw; shot.height=vh;      // 拍完整画面（缩小，不裁切）
       const ctx2=shot.getContext('2d');
-      ctx2.translate(vw,0); ctx2.scale(-1,1);   // 左右镜像
-      ctx2.drawImage(v, 0, 0, vw, vh);
+      if(vw>vh){
+        // 横屏流 → 旋转 90° 输出竖屏照片（自拍镜像）
+        shot.width=vh; shot.height=vw;
+        ctx2.translate(vh,0); ctx2.rotate(Math.PI/2);
+        ctx2.scale(-1,1);
+        ctx2.drawImage(v, 0, 0, vw, vh);
+      }else{
+        shot.width=vw; shot.height=vh;
+        ctx2.translate(vw,0); ctx2.scale(-1,1);
+        ctx2.drawImage(v, 0, 0, vw, vh);
+      }
       await stopCam();
       v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
       busy=false;
