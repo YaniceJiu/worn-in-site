@@ -1203,7 +1203,7 @@ function showCam(){
       if(vw>vh){
         // 横屏流 → 旋转 90° 输出竖屏照片（自拍镜像）
         shot.width=vh; shot.height=vw;
-        ctx2.rotate(-Math.PI/2);
+        ctx2.translate(vh,vw); ctx2.rotate(Math.PI/2);
         ctx2.scale(-1,1);
         ctx2.drawImage(v, 0, 0, vw, vh);
       }else{
