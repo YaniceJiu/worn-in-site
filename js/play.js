@@ -615,10 +615,13 @@ async function genScentLinesLLM(){
 
 /* ---------- 段4：毛球染液，每句涨1/5、句间随机涨1/5、最后补满 ---------- */
 // 毛球染色：3 个主色去重；纯色=三球同色；2色=主色×2+次色×1；3色=各一色
+// 过滤掉 buildResult 为凑够3个而自动填充的白色（hex #f2efe8），避免纯色衣服出现白球
 function tintColors(){
   const cols=(AI&&AI.colors)||[];
+  const real=cols.filter(c=>!(c && c.name==='white' && c.hex==='#f2efe8'));
+  const src=real.length?real:cols;
   const uniq=[];
-  for(const c of cols){
+  for(const c of src){
     const hex=(c&&c.hex)||'';
     if(hex && uniq.indexOf(hex)<0) uniq.push(hex);
   }
