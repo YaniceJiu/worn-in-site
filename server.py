@@ -12,6 +12,7 @@
   POST /pump   -> {"style":"甜美少女"} 或 {"pump":3} -> 串口指挥 ESP32 转对应泵
 """
 import http.server, socketserver, os, sys, json, socket, time, urllib.request, urllib.parse
+import base64, io, tempfile
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -82,6 +83,82 @@ def send_pump(pump_no, target=1.0):
     _ser.reset_input_buffer()
     _ser.write(('P%d:%.2f\n' % (pump_no, target)).encode('utf-8'))
     return {'ok': True, 'pump': pump_no, 'target': target, 'port': port}
+
+
+# ---------- 电脑静默打印（衣服卡 + 配方 → HP DeskJet） ----------
+PRINTER_NAME = 'HP DeskJet 5000 series [BDEC02]'
+
+
+def print_card_page(card_png_bytes, top, mid, base):
+    """把衣服卡 PNG + 配方文字合成一页 A4，静默打印到 HP 打印机。"""
+    try:
+        from PIL import Image, ImageDraw, ImageFont, ImageWin
+        import win32print, win32ui
+    except ImportError as e:
+        raise RuntimeError('打印依赖缺失: pip install pywin32 pillow (' + str(e) + ')')
+
+    # 1) 合成 A4 竖版打印页（150dpi）
+    W, H = 1240, 1754
+    page = Image.new('RGB', (W, H), 'white')
+    draw = ImageDraw.Draw(page)
+
+    card = Image.open(io.BytesIO(card_png_bytes)).convert('RGBA')
+    cw = int(W * 0.66)
+    ch = int(card.height * cw / card.width) if card.width else cw
+    if ch > int(H * 0.62):
+        ch = int(H * 0.62)
+        cw = int(card.width * ch / card.height) if card.height else cw
+    card = card.resize((cw, ch), Image.LANCZOS)
+    card_bg = Image.new('RGB', (cw, ch), 'white')
+    card_bg.paste(card, (0, 0), card)
+    page.paste(card_bg, ((W - cw) // 2, 70))
+
+    # 2) 配方文字
+    fdir = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'Fonts')
+    def _font(size, bold=False):
+        p = os.path.join(fdir, 'arialbd.ttf' if bold else 'arial.ttf')
+        if os.path.exists(p):
+            return ImageFont.truetype(p, size)
+        return ImageFont.load_default()
+
+    y = 70 + ch + 70
+    draw.text((W // 2, y), 'Worn-In · Your Recipe', font=_font(48, True), fill=(25, 25, 25), anchor='ma')
+    y += 96
+    for label, items in (('Top', top), ('Heart', mid), ('Base', base)):
+        draw.text((W // 2, y), label + '   ' + '  ·  '.join(items), font=_font(34), fill=(45, 45, 45), anchor='ma')
+        y += 58
+
+    tmp = os.path.join(tempfile.gettempdir(), 'wornin_card_%d.png' % int(time.time() * 1000))
+    page.save(tmp)
+
+    # 3) 静默打印到 HP
+    hprinter = win32print.OpenPrinter(PRINTER_NAME)
+    hdc = None
+    try:
+        hdc = win32ui.CreateDC()
+        hdc.CreatePrinterDC(PRINTER_NAME)
+        hdc.StartDoc('Worn-In Garment Card')
+        hdc.StartPage()
+        pw = hdc.GetDeviceCaps(110)   # PHYSICALWIDTH
+        ph = hdc.GetDeviceCaps(111)   # PHYSICALHEIGHT
+        ox = hdc.GetDeviceCaps(112)   # PHYSICALOFFSETX
+        oy = hdc.GetDeviceCaps(113)   # PHYSICALOFFSETY
+        iw, ih = page.size
+        scale = min(pw / iw, ph / ih)
+        dw, dh = int(iw * scale), int(ih * scale)
+        dx = ox + (pw - dw) // 2
+        dy = oy + (ph - dh) // 2
+        dib = ImageWin.Dib(page)
+        dib.draw(hdc.GetHandleOutput(), (dx, dy, dx + dw, dy + dh))
+        hdc.EndPage()
+        hdc.EndDoc()
+        return {'ok': True, 'printer': PRINTER_NAME}
+    finally:
+        if hdc is not None:
+            try: hdc.DeleteDC()
+            except Exception: pass
+        try: win32print.ClosePrinter(hprinter)
+        except Exception: pass
 
 
 # ---------- Stripe（扫码收款） ----------
@@ -211,6 +288,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'ok': True, 'id': obj.get('id'), 'url': obj.get('url')})
             except Exception as e:
                 self._json(500, {'ok': False, 'error': str(e)})
+        elif self.path.startswith('/print'):
+            try:
+                n = int(self.headers.get('Content-Length', 0))
+                data = json.loads(self.rfile.read(n) or b'{}')
+                img = data.get('image', '')
+                if ',' in img:
+                    img = img.split(',', 1)[1]
+                if not img:
+                    raise ValueError('missing image')
+                top = data.get('top') or []
+                mid = data.get('mid') or []
+                base = data.get('base') or []
+                if not isinstance(top, list): top = [top]
+                if not isinstance(mid, list): mid = [mid]
+                if not isinstance(base, list): base = [base]
+                png = base64.b64decode(img)
+                result = print_card_page(png, top, mid, base)
+                self._json(200, {'ok': True, 'printer': result.get('printer')})
+            except Exception as e:
+                self._json(500, {'ok': False, 'error': str(e)})
         else:
             self._json(404, {'ok': False, 'error': 'not found'})
 
@@ -231,6 +328,7 @@ if __name__ == '__main__':
         print('Serving on %s://127.0.0.1:%d  (root=%s)' % (scheme, PORT, ROOT))
         print('局域网其它设备: %s://%s:%d/play.html' % (scheme, lan_ip(), PORT))
         print('泵接口: POST /pump {"style":"甜美少女"}')
+        print('打印接口: POST /print {"image":"data:image/png;base64,...","top":[],"mid":[],"base":[]} → %s' % PRINTER_NAME)
         if load_stripe_key():
             print('Stripe: 已配置密钥（扫码收款可用）')
         else:

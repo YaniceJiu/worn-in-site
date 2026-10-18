@@ -1095,6 +1095,24 @@ function doPrint(){
   if(!printReady) return;
   try{ window.print(); }catch(e){ console.warn('[print]',e); }
 }
+async function sendPrintToPC(garmentDataUrl){
+  // 电脑静默打印：衣服卡+配方 → server.py → HP 打印机（无 iOS 弹窗）
+  try{
+    const top=(AI.recipe.top||[]).map(n=>COPY.SPICE_EN[n]||n);
+    const mid=(AI.recipe.mid||[]).map(n=>COPY.SPICE_EN[n]||n);
+    const base=(AI.recipe.base||[]).map(n=>COPY.SPICE_EN[n]||n);
+    const r=await fetch('/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:garmentDataUrl,top,mid,base})});
+    const j=await r.json();
+    if(j&&j.ok){
+      printReady=false;   // 电脑已打印，不再需要 iOS 按钮
+      showPrintStatus('Printed on HP printer ✓');
+    }else{
+      console.warn('[print-pc]', j);   // 失败：保留 iOS 打印按钮作备选
+    }
+  }catch(e){
+    console.warn('[print-pc] 电脑打印不可用，保留 iOS 按钮备选:', e.message);
+  }
+}
 async function autoPrintWhenReady(){
   showPrintStatus('Preparing your card…');
   try{
@@ -1106,6 +1124,7 @@ async function autoPrintWhenReady(){
     if(!gImg){ showPrintStatus('Card image failed — not a printer issue'); return; }
     garmentReadyImg=gImg;
     preparePrint();
+    sendPrintToPC(garment);   // 电脑静默打印（失败则保留 iOS 按钮备选）
   }catch(e){ console.warn('[auto-print]', e); showPrintStatus('Print prep failed'); }
 }
 async function uploadToImgbb(dataUrl){
