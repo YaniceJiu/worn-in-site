@@ -259,6 +259,7 @@ let analyzePromise=null;
 let garmentPromise=null;   // 后台生成服装纸艺拼贴图（gpt-image-1）
 let garmentReadyImg=null;  // 已就绪的衣服卡图片（用于打印）
 let printReady=false;      // 打印内容是否已备好
+let garmentErr='';         // 衣服卡生成失败原因（供屏幕显示）
 
 function begin(p){ phase=p; }
 let last=performance.now(),raf=0;
@@ -1035,18 +1036,20 @@ Avoid: human model, mannequin, human body, face, head, hair, skin, arms, hands, 
 async function runGarmentImage(){
   try{
     const key=getKey();
-    if(!key || !photo.crop) return null;
+    if(!key){ garmentErr='No API key — tap ⚙ top-right to set it'; return null; }
+    if(!photo.crop){ garmentErr='No photo captured yet'; return null; }
     const b64=photo.crop.toDataURL('image/jpeg',0.9).split(',')[1];
     const resp=await fetch('https://api.openai.com/v1/images/edits',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({model:'gpt-image-1',prompt:GARMENT_PROMPT,images:[{image_url:'data:image/jpeg;base64,'+b64}],background:'transparent',output_format:'png',size:'1024x1536',quality:'medium'}),
     });
-    if(!resp.ok){ console.warn('[garment-img]',resp.status,(await resp.text()).slice(0,200)); return null; }
+    if(!resp.ok){ garmentErr='AI image error (HTTP '+resp.status+') — check API credits/balance'; console.warn('[garment-img]',resp.status,(await resp.text()).slice(0,200)); return null; }
     const j=await resp.json();
     const b=j&&j.data&&j.data[0]&&j.data[0].b64_json;
+    if(!b){ garmentErr='AI image returned empty'; }
     return b?('data:image/png;base64,'+b):null;
-  }catch(e){ console.warn('[garment-img]',e); return null; }
+  }catch(e){ garmentErr='Network error — check WiFi: '+e.message; console.warn('[garment-img]',e); return null; }
 }
 async function waitGarment(){
   if(!garmentPromise) return null;
@@ -1096,11 +1099,11 @@ async function autoPrintWhenReady(){
   showPrintStatus('Preparing your card…');
   try{
     const garment=await waitGarment();
-    if(!garment){ showPrintStatus('Card image failed — check network'); return; }
+    if(!garment){ showPrintStatus(garmentErr || 'Card image failed — not a printer issue'); return; }
     if(!AI && analyzePromise){ try{ await analyzePromise; }catch(e){ showPrintStatus('AI failed — check API key'); return; } }
     if(!AI){ showPrintStatus('AI failed — check API key'); return; }
     const gImg=await loadImg(garment);
-    if(!gImg){ showPrintStatus('Card image failed — check network'); return; }
+    if(!gImg){ showPrintStatus('Card image failed — not a printer issue'); return; }
     garmentReadyImg=gImg;
     preparePrint();
   }catch(e){ console.warn('[auto-print]', e); showPrintStatus('Print prep failed'); }
@@ -1266,28 +1269,15 @@ function showCam(){
       cd.classList.remove('hidden');
       for(let i=3;i>=1;i--){ num.textContent=i; restartRing(); await sleep(900); }
       cd.classList.add('hidden');
-      // 先按竖屏构图把视频画进 shot，再关摄像头（关后再画会黑屏）
+      // iOS 已把画面转正（虽然 videoWidth/videoHeight 报横），直接镜像即可，不要旋转
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
-      const landscape=vw>vh;
-      const outW=landscape?vh:vw;   // 输出宽=短边
-      const outH=landscape?vw:vh;   // 输出高=长边（竖屏）
-      console.log('[cam-shoot]', vw+'x'+vh, landscape?'landscape':'portrait');
-      shot.width=outW; shot.height=outH;
+      shot.width=vw; shot.height=vh;
       const ctx2=shot.getContext('2d');
-      ctx2.setTransform(1,0,0,1,0,0);   // 重置，避免 retake 多次累积变换
-      if(landscape){
-        // 横屏传感器：逆时针旋转90° + 镜像（中心旋转，与 CSS 预览一致）
-        ctx2.translate(outW/2, outH/2);
-        ctx2.scale(-1,1);
-        ctx2.rotate(-Math.PI/2);
-        ctx2.drawImage(v, -vw/2, -vh/2);
-      }else{
-        // 竖屏：直接镜像，不做旋转
-        ctx2.translate(outW,0);
-        ctx2.scale(-1,1);
-        ctx2.drawImage(v,0,0,vw,vh);
-      }
-      showDbg('cam '+vw+'x'+vh+' · '+(landscape?'landscape':'portrait')+' → shot '+shot.width+'x'+shot.height);
+      ctx2.setTransform(1,0,0,1,0,0);
+      ctx2.translate(vw,0);
+      ctx2.scale(-1,1);
+      ctx2.drawImage(v,0,0,vw,vh);
+      showDbg('cam '+vw+'x'+vh+' → shot '+shot.width+'x'+shot.height+' · mirrored');
       await stopCam();
       v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
       busy=false;
