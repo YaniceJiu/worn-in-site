@@ -257,6 +257,8 @@ let yarnTint={};    // layerId -> hex
 let lowerLiquidF=null;   // 非 null：液面下降模式（液体帧 0~49，球固定满液帧）
 let analyzePromise=null;
 let garmentPromise=null;   // 后台生成服装纸艺拼贴图（gpt-image-1）
+let garmentReadyImg=null;  // 已就绪的衣服卡图片（用于打印）
+let printReady=false;      // 打印内容是否已备好
 
 function begin(p){ phase=p; }
 let last=performance.now(),raf=0;
@@ -1053,13 +1055,33 @@ async function waitGarment(){
 }
 
 /* ---------- 自动打印衣服卡 + 配方（后台，不阻塞主流程） ---------- */
+/* iOS 限制：window.print() 必须由用户手势触发，异步调用会被静默拦截。
+   所以这里「衣服卡一生成好 → 自动弹出打印按钮」，顾客点一下即触发系统打印框。 */
 function fillPrintArea(gImg){
   const en=n=>COPY.SPICE_EN[n]||n;
   const set=(id,v)=>{ const el=$(id); if(el) el.textContent=v; };
   set('printTop', (AI&&AI.recipe.top||[]).map(en).join(' · '));
   set('printMid', (AI&&AI.recipe.mid||[]).map(en).join(' · '));
   set('printBase', (AI&&AI.recipe.base||[]).map(en).join(' · '));
-  const pi=$('printImg'); if(pi){ pi.src=gImg.src; }
+  const pi=$('printImg'); if(pi && gImg){ pi.src=gImg.src; }
+}
+function showPrintButton(){
+  try{
+    const b=$('printBtn'); if(b) b.classList.remove('hidden');
+    toast('Your card is ready — tap PRINT to send it to the printer');
+  }catch(e){}
+}
+function preparePrint(){
+  try{
+    if(!AI || !garmentReadyImg) return;
+    fillPrintArea(garmentReadyImg);
+    printReady=true;
+    showPrintButton();
+  }catch(e){ console.warn('[print]',e); }
+}
+function doPrint(){
+  if(!printReady) return;
+  try{ window.print(); }catch(e){ console.warn('[print]',e); }
 }
 async function autoPrintWhenReady(){
   try{
@@ -1069,8 +1091,8 @@ async function autoPrintWhenReady(){
     if(!AI) return;
     const gImg=await loadImg(garment);
     if(!gImg) return;
-    fillPrintArea(gImg);
-    setTimeout(()=>{ try{ window.print(); }catch(e){} }, 350);   // 等图片渲染一帧再弹打印框
+    garmentReadyImg=gImg;
+    preparePrint();
   }catch(e){ console.warn('[auto-print]', e); }
 }
 async function uploadToImgbb(dataUrl){
@@ -1103,6 +1125,7 @@ async function showResultStrip(){
   clearFX(); bottom(null); hint(null);
   const garment=await waitGarment();
   const gImg=garment?await loadImg(garment):null;
+  if(gImg && AI){ garmentReadyImg=gImg; preparePrint(); }
   // 第一次生成长条图（二维码占位）→ 上传 imgbb 得公网 URL → 生成二维码（JPEG 压缩，减小体积加速加载）
   let qrImg=null;
   const url1=await uploadToImgbb(renderResultStrip(gImg,null).toDataURL('image/jpeg',0.9));
@@ -1222,23 +1245,23 @@ function showCam(){
       cd.classList.add('hidden');
       // 先按竖屏构图把视频画进 shot，再关摄像头（关后再画会黑屏）
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
+      const landscape=vw>vh;
+      const outW=landscape?vh:vw;   // 输出宽=短边
+      const outH=landscape?vw:vh;   // 输出高=长边（竖屏）
+      console.log('[cam-shoot]', vw+'x'+vh, landscape?'landscape':'portrait');
+      shot.width=outW; shot.height=outH;
       const ctx2=shot.getContext('2d');
-      const outW=Math.min(vw,vh), outH=Math.max(vw,vh);   // 确保输出竖屏（宽=短边、高=长边）
-      console.log('[cam-shoot]', vw+'x'+vh, (vw>vh?'landscape':'portrait'));
-      if(vw>vh){
-        // 横屏传感器 → 逆时针旋转90°成竖屏（临时canvas，不越界），再左右镜像
-        const tmp=document.createElement('canvas');
-        tmp.width=outW; tmp.height=outH;
-        const tc=tmp.getContext('2d');
-        tc.translate(0,outH); tc.rotate(-Math.PI/2);
-        tc.drawImage(v,0,0,vw,vh);
-        shot.width=outW; shot.height=outH;
-        ctx2.translate(outW,0); ctx2.scale(-1,1);
-        ctx2.drawImage(tmp,0,0);
+      ctx2.setTransform(1,0,0,1,0,0);   // 重置，避免 retake 多次累积变换
+      if(landscape){
+        // 横屏传感器：先左右镜像，再顺时针旋转90°（与 CSS 预览 cam-land 一致，所见即所得）
+        ctx2.translate(outW,outH);
+        ctx2.rotate(Math.PI/2);
+        ctx2.scale(-1,1);
+        ctx2.drawImage(v,0,0,vw,vh);
       }else{
         // 竖屏：直接镜像，不做旋转
-        shot.width=outW; shot.height=outH;
-        ctx2.translate(outW,0); ctx2.scale(-1,1);
+        ctx2.translate(outW,0);
+        ctx2.scale(-1,1);
         ctx2.drawImage(v,0,0,vw,vh);
       }
       await stopCam();
@@ -1255,7 +1278,13 @@ async function startCam(){
   const v=$('video');
   try{
     camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},audio:false});
-    v.srcObject=camStream; await v.play();
+    v.srcObject=camStream;
+    v.onloadedmetadata=()=>{
+      const land=v.videoWidth>v.videoHeight;
+      const cv=$('camView'); if(cv) cv.classList.toggle('cam-land',land);
+      console.log('[cam]', v.videoWidth+'x'+v.videoHeight, land?'landscape':'portrait');
+    };
+    await v.play();
     return true;
   }catch(e){ console.warn('[cam]',e); return false; }
 }
@@ -1339,6 +1368,7 @@ window.PLAY=PLAY;
   }
   raf=requestAnimationFrame(loop);
   // 首次访问（本机没存过 Key）→ 一打开网站就弹出 Key 输入框，填一次永久记住
+  const _pb=$('printBtn'); if(_pb) _pb.onclick=doPrint;
   if(!getKey()) setTimeout(()=>{ ensureKey(); }, 350);
   // 猫眼门放行后才真正开始
   let started=false;

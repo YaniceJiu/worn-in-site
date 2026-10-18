@@ -55,6 +55,12 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 #camView{position:absolute;inset:0;background:#000;overflow:hidden}
 #camView video,#camView canvas{width:100%;height:100%;object-fit:cover}
 #camView video{transform:scaleX(-1)}
+/* 横屏传感器流 → 旋转90°竖屏显示（与拍照输出一致） */
+#camView.cam-land video{
+  position:absolute;left:50%;top:50%;
+  width:100vh;height:100vw;
+  transform:translate(-50%,-50%) rotate(90deg) scaleX(-1);
+}
 #camClose{position:absolute;top:16px;left:16px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(0,0,0,.32);color:#fff;font-size:18px;cursor:pointer;z-index:5}
 #countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4}
 #cdRing{position:absolute;width:230px;height:230px}
@@ -111,6 +117,9 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 #keyPanel input{width:100%;padding:6px 8px;border:1px solid #4a4134;background:#14110d;color:#eee;border-radius:6px;margin-bottom:8px}
 #keyPanel button{padding:5px 14px;border:none;border-radius:12px;background:#c9a05c;color:#231a10;cursor:pointer}
 #keyHint{margin-left:8px;color:#8fd08a}
+
+/* 打印按钮：衣服卡就绪后弹出 */
+#printBtn{position:fixed;right:16px;bottom:22px;z-index:400;padding:14px 24px;border:none;border-radius:32px;background:linear-gradient(#e6c383,#c9a05c);color:#231a10;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.45)}
 
 /* 打印：只打印衣服卡 + 配方 */
 #printArea{display:none}
