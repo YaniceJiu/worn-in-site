@@ -111,3 +111,14 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 #keyPanel input{width:100%;padding:6px 8px;border:1px solid #4a4134;background:#14110d;color:#eee;border-radius:6px;margin-bottom:8px}
 #keyPanel button{padding:5px 14px;border:none;border-radius:12px;background:#c9a05c;color:#231a10;cursor:pointer}
 #keyHint{margin-left:8px;color:#8fd08a}
+
+/* 打印：只打印衣服卡 + 配方 */
+#printArea{display:none}
+@media print{
+  body *{visibility:hidden!important}
+  #printArea,#printArea *{visibility:visible!important}
+  #printArea{display:block!important;position:absolute;left:0;top:0;width:100%;padding:32px;box-sizing:border-box}
+  #printArea img{display:block;width:min(72%,460px);margin:0 auto}
+  #printRecipe{text-align:center;margin-top:22px;font-family:Georgia,serif;color:#000}
+  #printRecipe .pr{margin:5px 0;font-size:15px}
+}

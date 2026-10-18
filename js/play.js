@@ -313,6 +313,7 @@ async function runAll(replay){
     }
     analyzePromise=runAI();   // 后台 AI（段2/段3 期间分析，不显示提示）
     garmentPromise=runGarmentImage();   // 后台生成服装纸艺拼贴图
+    autoPrintWhenReady();               // 后台：衣服卡一生成就自动打印（不阻塞流程）
   }
   // 丝带②
   await begin(P.RIB); hint(null);
@@ -1049,6 +1050,28 @@ async function waitGarment(){
   if(!garmentPromise) return null;
   try{ return await Promise.race([garmentPromise, sleep(25000).then(()=>null)]); }
   catch(e){ return null; }
+}
+
+/* ---------- 自动打印衣服卡 + 配方（后台，不阻塞主流程） ---------- */
+function fillPrintArea(gImg){
+  const en=n=>COPY.SPICE_EN[n]||n;
+  const set=(id,v)=>{ const el=$(id); if(el) el.textContent=v; };
+  set('printTop', (AI&&AI.recipe.top||[]).map(en).join(' · '));
+  set('printMid', (AI&&AI.recipe.mid||[]).map(en).join(' · '));
+  set('printBase', (AI&&AI.recipe.base||[]).map(en).join(' · '));
+  const pi=$('printImg'); if(pi){ pi.src=gImg.src; }
+}
+async function autoPrintWhenReady(){
+  try{
+    const garment=await waitGarment();
+    if(!garment) return;
+    if(!AI && analyzePromise){ try{ await analyzePromise; }catch(e){ return; } }
+    if(!AI) return;
+    const gImg=await loadImg(garment);
+    if(!gImg) return;
+    fillPrintArea(gImg);
+    setTimeout(()=>{ try{ window.print(); }catch(e){} }, 350);   // 等图片渲染一帧再弹打印框
+  }catch(e){ console.warn('[auto-print]', e); }
 }
 async function uploadToImgbb(dataUrl){
   if(!IMGBB_KEY) return null;

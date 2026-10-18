@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Worn-In · Old Clothes, New Scent</title>
-<link rel="stylesheet" href="play.css?v=21">
+<link rel="stylesheet" href="play.css?v=22">
 </head>
 <body>
 <!-- 猫眼入口门：点击猫眼后网站才开始 -->
@@ -62,10 +62,20 @@
   <span id="keyHint" class="hidden">✓ Saved</span>
 </div>
 
+<!-- 打印区（仅打印时显示）：衣服卡 + 配方 -->
+<div id="printArea">
+  <img id="printImg" alt="Garment card">
+  <div id="printRecipe">
+    <div class="pr">Top · <span id="printTop"></span></div>
+    <div class="pr">Heart · <span id="printMid"></span></div>
+    <div class="pr">Base · <span id="printBase"></span></div>
+  </div>
+</div>
+
 <script src="js/apikey.js"></script>
 <script src="assets/vendor/qrcode.min.js"></script>
 <script src="js/copykit.js?v=4"></script>
   <script type="module" src="js/catgate.js?v=5"></script>
-  <script src="js/play.js?v=87"></script>
+  <script src="js/play.js?v=88"></script>
 </body>
 </html>
