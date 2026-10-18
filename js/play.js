@@ -1200,20 +1200,22 @@ function showCam(){
       // 先按竖屏构图把视频画进 shot，再关摄像头（关后再画会黑屏）
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
       const ctx2=shot.getContext('2d');
+      const outW=Math.min(vw,vh), outH=Math.max(vw,vh);   // 确保输出竖屏（宽=短边、高=长边）
+      console.log('[cam-shoot]', vw+'x'+vh, (vw>vh?'landscape':'portrait'));
       if(vw>vh){
-        // 横屏流 → 竖屏：先旋转 90°（临时canvas，不越界），再左右镜像
+        // 横屏传感器 → 逆时针旋转90°成竖屏（临时canvas，不越界），再左右镜像
         const tmp=document.createElement('canvas');
-        tmp.width=vh; tmp.height=vw;
+        tmp.width=outW; tmp.height=outH;
         const tc=tmp.getContext('2d');
-        tc.translate(vh,0); tc.rotate(Math.PI/2);
+        tc.translate(0,outH); tc.rotate(-Math.PI/2);
         tc.drawImage(v,0,0,vw,vh);
-        shot.width=vh; shot.height=vw;
-        ctx2.translate(vh,0); ctx2.scale(-1,1);
+        shot.width=outW; shot.height=outH;
+        ctx2.translate(outW,0); ctx2.scale(-1,1);
         ctx2.drawImage(tmp,0,0);
       }else{
-        // 竖屏流：直接镜像，不做旋转
-        shot.width=vw; shot.height=vh;
-        ctx2.translate(vw,0); ctx2.scale(-1,1);
+        // 竖屏：直接镜像，不做旋转
+        shot.width=outW; shot.height=outH;
+        ctx2.translate(outW,0); ctx2.scale(-1,1);
         ctx2.drawImage(v,0,0,vw,vh);
       }
       await stopCam();
