@@ -55,11 +55,11 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 #camView{position:absolute;inset:0;background:#000;overflow:hidden}
 #camView video,#camView canvas{width:100%;height:100%;object-fit:cover}
 #camView video{transform:scaleX(-1)}
-/* 横屏传感器流 → 旋转90°竖屏显示（与拍照输出一致） */
+/* 横屏传感器流 → 逆时针旋转90°竖屏显示（与拍照输出一致） */
 #camView.cam-land video{
   position:absolute;left:50%;top:50%;
   width:100vh;height:100vw;
-  transform:translate(-50%,-50%) rotate(90deg) scaleX(-1);
+  transform:translate(-50%,-50%) rotate(-90deg) scaleX(-1);
 }
 #camClose{position:absolute;top:16px;left:16px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(0,0,0,.32);color:#fff;font-size:18px;cursor:pointer;z-index:5}
 #countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4}

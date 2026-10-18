@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cam Direction Test</title>
+<style>
+  body{margin:0;background:#111;color:#eee;font-family:sans-serif;padding:12px}
+  h1{font-size:17px}
+  video{width:100%;max-height:38vh;background:#000;object-fit:contain;border-radius:8px}
+  button{padding:13px 22px;font-size:16px;margin:10px 0;border:none;border-radius:10px;background:#e6c383;color:#231a10;font-weight:700}
+  #grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .cell{background:#1a1a1a;border-radius:8px;padding:8px;text-align:center}
+  .cell canvas{width:100%;background:#000;border-radius:6px;display:block}
+  .cell b{display:block;margin-top:6px;font-size:14px;color:#8fd08a}
+  p{color:#aaa;font-size:13px}
+</style>
+</head>
+<body>
+<h1>Camera direction test — hold iPad upright, point at the garment</h1>
+<video id="v" autoplay playsinline muted></video>
+<button id="cap">Capture &amp; show 4 rotations</button>
+<div id="grid"></div>
+<p>Tap capture, then tell me which letter (A/B/C/D) shows the garment UPRIGHT.</p>
+<script>
+const v=document.getElementById('v');
+async function start(){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
+    v.srcObject=s;
+  }catch(e){ alert('Camera failed: '+e.message); }
+}
+start();
+document.getElementById('cap').onclick=()=>{
+  const vw=v.videoWidth, vh=v.videoHeight;
+  if(!vw){ alert('Video not ready'); return; }
+  document.getElementById('grid').innerHTML='';
+  const W=Math.min(vw,vh), H=Math.max(vw,vh);
+  const variants=[
+    ['A · rotate +90 · no mirror', 90, false],
+    ['B · rotate -90 · no mirror', -90, false],
+    ['C · rotate +90 · mirror', 90, true],
+    ['D · rotate -90 · mirror', -90, true],
+  ];
+  for(const [label,deg,mirror] of variants){
+    const c=document.createElement('canvas');
+    c.width=W; c.height=H;
+    const x=c.getContext('2d');
+    x.save();
+    x.translate(W/2,H/2);
+    if(mirror) x.scale(-1,1);
+    x.rotate(deg*Math.PI/180);
+    x.drawImage(v,-vw/2,-vh/2);
+    x.restore();
+    const cell=document.createElement('div'); cell.className='cell';
+    cell.appendChild(c);
+    const b=document.createElement('b'); b.textContent=label+'  ('+vw+'x'+vh+')';
+    cell.appendChild(b);
+    document.getElementById('grid').appendChild(cell);
+  }
+};
+</script>
+</body>
+</html>

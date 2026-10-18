@@ -1276,11 +1276,11 @@ function showCam(){
       const ctx2=shot.getContext('2d');
       ctx2.setTransform(1,0,0,1,0,0);   // 重置，避免 retake 多次累积变换
       if(landscape){
-        // 横屏传感器：先左右镜像，再旋转90°（与 CSS 预览 cam-land 一致，所见即所得）
-        ctx2.translate(outW,outH);
-        ctx2.rotate(Math.PI/2);
+        // 横屏传感器：逆时针旋转90° + 镜像（中心旋转，与 CSS 预览一致）
+        ctx2.translate(outW/2, outH/2);
         ctx2.scale(-1,1);
-        ctx2.drawImage(v,0,0,vw,vh);
+        ctx2.rotate(-Math.PI/2);
+        ctx2.drawImage(v, -vw/2, -vh/2);
       }else{
         // 竖屏：直接镜像，不做旋转
         ctx2.translate(outW,0);
