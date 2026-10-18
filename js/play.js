@@ -1065,9 +1065,18 @@ function fillPrintArea(gImg){
   set('printBase', (AI&&AI.recipe.base||[]).map(en).join(' · '));
   const pi=$('printImg'); if(pi && gImg){ pi.src=gImg.src; }
 }
+function showPrintStatus(msg){
+  try{
+    const ps=$('printStatus'); if(ps) ps.classList.remove('hidden');
+    const pt=$('printStatusText'); if(pt) pt.textContent=msg;
+    const pb=$('printBtn'); if(pb) pb.classList.add('hidden');
+  }catch(e){}
+}
 function showPrintButton(){
   try{
-    const b=$('printBtn'); if(b) b.classList.remove('hidden');
+    const ps=$('printStatus'); if(ps) ps.classList.remove('hidden');
+    const pt=$('printStatusText'); if(pt) pt.textContent='';
+    const pb=$('printBtn'); if(pb) pb.classList.remove('hidden');
     toast('Your card is ready — tap PRINT to send it to the printer');
   }catch(e){}
 }
@@ -1084,16 +1093,17 @@ function doPrint(){
   try{ window.print(); }catch(e){ console.warn('[print]',e); }
 }
 async function autoPrintWhenReady(){
+  showPrintStatus('Preparing your card…');
   try{
     const garment=await waitGarment();
-    if(!garment) return;
-    if(!AI && analyzePromise){ try{ await analyzePromise; }catch(e){ return; } }
-    if(!AI) return;
+    if(!garment){ showPrintStatus('Card image failed — check network'); return; }
+    if(!AI && analyzePromise){ try{ await analyzePromise; }catch(e){ showPrintStatus('AI failed — check API key'); return; } }
+    if(!AI){ showPrintStatus('AI failed — check API key'); return; }
     const gImg=await loadImg(garment);
-    if(!gImg) return;
+    if(!gImg){ showPrintStatus('Card image failed — check network'); return; }
     garmentReadyImg=gImg;
     preparePrint();
-  }catch(e){ console.warn('[auto-print]', e); }
+  }catch(e){ console.warn('[auto-print]', e); showPrintStatus('Print prep failed'); }
 }
 async function uploadToImgbb(dataUrl){
   if(!IMGBB_KEY) return null;
@@ -1230,11 +1240,24 @@ function showCam(){
   return new Promise(resolve=>{
     const ov=$('camOverlay'), v=$('video'), shot=$('photoShot');
     const cd=$('countdown'), num=$('countNum'), arc=$('cdArc');
-    const doneBox=$('camDone'), ok=$('btnOk'), rk=$('btnRetake'), close=$('camClose');
+    const doneBox=$('camDone'), ok=$('btnOk'), rk=$('btnRetake'), rot=$('btnRotate'), close=$('camClose');
+    const dbg=$('camDbg');
     ov.classList.remove('hidden');
     let busy=false;
     const finish=()=>{ hideCam(); resolve('ok'); };
     const restartRing=()=>{ arc.style.animation='none'; void arc.offsetWidth; arc.style.animation=''; };
+    const showDbg=(t)=>{ if(dbg){ dbg.textContent=t; dbg.classList.remove('hidden'); } };
+    const rotateShot=()=>{   // 手动旋转已拍好的照片90°（方向不对时兜底）
+      const s=shot, w=s.width, h=s.height;
+      if(!w||!h) return;
+      const t=document.createElement('canvas'); t.width=h; t.height=w;
+      const tx=t.getContext('2d');
+      tx.translate(h,0); tx.rotate(Math.PI/2); tx.drawImage(s,0,0);
+      s.width=h; s.height=w;
+      const cx=s.getContext('2d'); cx.setTransform(1,0,0,1,0,0); cx.drawImage(t,0,0);
+      showDbg('cam '+(v.videoWidth||'?')+'x'+(v.videoHeight||'?')+' → shot '+s.width+'x'+s.height+' · rotated');
+    };
+    if(rot) rot.onclick=rotateShot;
     async function shoot(first){
       if(busy) return; busy=true;
       shot.classList.add('hidden'); v.classList.remove('hidden'); doneBox.classList.add('hidden');
@@ -1253,7 +1276,7 @@ function showCam(){
       const ctx2=shot.getContext('2d');
       ctx2.setTransform(1,0,0,1,0,0);   // 重置，避免 retake 多次累积变换
       if(landscape){
-        // 横屏传感器：先左右镜像，再顺时针旋转90°（与 CSS 预览 cam-land 一致，所见即所得）
+        // 横屏传感器：先左右镜像，再旋转90°（与 CSS 预览 cam-land 一致，所见即所得）
         ctx2.translate(outW,outH);
         ctx2.rotate(Math.PI/2);
         ctx2.scale(-1,1);
@@ -1264,6 +1287,7 @@ function showCam(){
         ctx2.scale(-1,1);
         ctx2.drawImage(v,0,0,vw,vh);
       }
+      showDbg('cam '+vw+'x'+vh+' · '+(landscape?'landscape':'portrait')+' → shot '+shot.width+'x'+shot.height);
       await stopCam();
       v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
       busy=false;

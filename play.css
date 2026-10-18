@@ -71,6 +71,8 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 #camDone button{padding:15px 36px;border:none;border-radius:36px;font-size:17px;font-weight:700;cursor:pointer}
 #btnOk{background:linear-gradient(#e6c383,#c9a05c);color:#231a10}
 #btnRetake{background:rgba(40,34,26,.85);color:#f0e3cd;border:1px solid #6b5a42}
+#btnRotate{background:rgba(40,34,26,.85);color:#f0e3cd;border:1px solid #6b5a42}
+#camDbg{position:absolute;top:16px;right:16px;z-index:7;background:rgba(0,0,0,.62);color:#8fd08a;font:12px/1.4 monospace;padding:6px 10px;border-radius:8px;text-align:right}
 
 #aiLoading{align-items:center;justify-content:center;background:rgba(14,11,8,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .aiCard{background:#241f18;border:1px solid #000;border-radius:18px;padding:28px 40px;text-align:center;color:#f0e3cd}
@@ -118,8 +120,10 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 #keyPanel button{padding:5px 14px;border:none;border-radius:12px;background:#c9a05c;color:#231a10;cursor:pointer}
 #keyHint{margin-left:8px;color:#8fd08a}
 
-/* 打印按钮：衣服卡就绪后弹出 */
-#printBtn{position:fixed;right:16px;bottom:22px;z-index:400;padding:14px 24px;border:none;border-radius:32px;background:linear-gradient(#e6c383,#c9a05c);color:#231a10;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+/* 打印状态：衣服卡就绪后弹出 */
+#printStatus{position:fixed;right:16px;bottom:22px;z-index:400;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#printStatusText{background:rgba(20,15,10,.85);color:#e8dcc8;font-size:13px;padding:8px 14px;border-radius:18px;border:1px solid #4a4134}
+#printBtn{padding:14px 24px;border:none;border-radius:32px;background:linear-gradient(#e6c383,#c9a05c);color:#231a10;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.45)}
 
 /* 打印：只打印衣服卡 + 配方 */
 #printArea{display:none}

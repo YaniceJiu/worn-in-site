@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Worn-In · Old Clothes, New Scent</title>
-<link rel="stylesheet" href="play.css?v=23">
+<link rel="stylesheet" href="play.css?v=24">
 </head>
 <body>
 <!-- 猫眼入口门：点击猫眼后网站才开始 -->
@@ -39,8 +39,10 @@
     <button id="camClose" aria-label="Close">✕</button>
     <div id="camDone" class="hidden">
       <button id="btnRetake">↺ Retake</button>
+      <button id="btnRotate">⟳ Rotate</button>
       <button id="btnOk">Blend</button>
     </div>
+    <div id="camDbg" class="hidden"></div>
   </div>
 </div>
 
@@ -62,8 +64,11 @@
   <span id="keyHint" class="hidden">✓ Saved</span>
 </div>
 
-<!-- 打印按钮：衣服卡生成后自动弹出（iOS 需用户点击才弹打印框） -->
-<button id="printBtn" class="hidden">🖨 Print my card</button>
+<!-- 打印状态：衣服卡生成中→就绪变打印按钮（iOS 需用户点击才弹打印框） -->
+<div id="printStatus" class="hidden">
+  <span id="printStatusText">Preparing your card…</span>
+  <button id="printBtn" class="hidden">🖨 Print my card</button>
+</div>
 
 <!-- 打印区（仅打印时显示）：衣服卡 + 配方 -->
 <div id="printArea">
@@ -79,6 +84,6 @@
 <script src="assets/vendor/qrcode.min.js"></script>
 <script src="js/copykit.js?v=4"></script>
   <script type="module" src="js/catgate.js?v=5"></script>
-  <script src="js/play.js?v=89"></script>
+  <script src="js/play.js?v=90"></script>
 </body>
 </html>
