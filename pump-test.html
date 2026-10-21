@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pump Test</title>
+<style>
+  body{margin:0;background:#15110c;color:#eee;font-family:sans-serif;padding:18px;min-height:100vh;box-sizing:border-box}
+  h1{font-size:19px;color:#e6c383}
+  p{color:#aaa;font-size:13px;margin:4px 0 14px}
+  .row{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .row label{font-size:14px;color:#ddd}
+  #dur{width:64px;padding:8px;border-radius:8px;border:1px solid #4a4134;background:#241f18;color:#eee;font-size:16px;text-align:center}
+  #pumps{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+  .pump{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:12px;border:none;background:#2a221a;color:#f0e3cd;font-size:16px;font-weight:700;cursor:pointer}
+  .pump:active{background:#3a2f22}
+  .pump small{font-weight:400;color:#a9947a}
+  .danger{display:flex;gap:10px}
+  .danger button{flex:1;padding:14px;border-radius:12px;border:none;font-size:16px;font-weight:700;cursor:pointer}
+  #stop{background:#8a2f2f;color:#fff}
+  #reset{background:#2f4a6b;color:#fff}
+  #status{margin-top:16px;padding:12px;border-radius:10px;background:#1c1712;border:1px solid #4a4134;font:13px/1.5 monospace;color:#8fd08a;min-height:20px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>Pump Test</h1>
+<p>Connects to the ESP32 pump controller through this computer's server.</p>
+
+<div class="row">
+  <label>Duration (seconds):</label>
+  <input id="dur" type="number" value="0.5" min="0.1" max="10" step="0.1">
+</div>
+
+<div id="pumps">
+  <button class="pump" data-p="1">Pump 1<small>Wild</small></button>
+  <button class="pump" data-p="2">Pump 2<small>Office</small></button>
+  <button class="pump" data-p="3">Pump 3<small>Sweet</small></button>
+  <button class="pump" data-p="4">Pump 4<small>Sporty</small></button>
+  <button class="pump" data-p="5">Pump 5<small>Natural / Home</small></button>
+  <button class="pump" data-p="6">Pump 6<small>Evening</small></button>
+</div>
+
+<div class="danger">
+  <button id="stop">🛑 STOP (emergency)</button>
+  <button id="reset">⟳ Reset</button>
+</div>
+
+<div id="status">Ready.</div>
+
+<script>
+async function post(path, body){
+  const st=document.getElementById('status');
+  st.textContent='POST '+path+' …';
+  try{
+    const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+    const j=await r.json();
+    st.textContent=JSON.stringify(j,null,2);
+  }catch(e){
+    st.textContent='ERROR: '+e.message+'\n(Is the server running on this computer?)';
+  }
+}
+const dur=()=>parseFloat(document.getElementById('dur').value||'0.5');
+document.querySelectorAll('.pump').forEach(b=>{
+  b.onclick=()=>post('/pump',{pump:Number(b.dataset.p),duration:dur()});
+});
+document.getElementById('stop').onclick=()=>post('/stop');
+document.getElementById('reset').onclick=()=>post('/reset');
+</script>
+</body>
+</html>

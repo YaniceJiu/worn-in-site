@@ -70,7 +70,7 @@ def lan_ip():
         s.close()
 
 
-def send_pump(pump_no, target=1.0):
+def _open_serial():
     global _ser
     if serial is None:
         raise RuntimeError('电脑未安装 pyserial，请先: pip install pyserial')
@@ -80,6 +80,18 @@ def send_pump(pump_no, target=1.0):
     if _ser is None or not _ser.is_open:
         _ser = serial.Serial(port, BAUD, timeout=1)
         time.sleep(2)   # 等 ESP32 复位/就绪
+    return port
+
+
+def send_raw(cmd):
+    port = _open_serial()
+    _ser.reset_input_buffer()
+    _ser.write((cmd + '\n').encode('utf-8'))
+    return {'ok': True, 'cmd': cmd, 'port': port}
+
+
+def send_pump(pump_no, target=1.0):
+    port = _open_serial()
     _ser.reset_input_buffer()
     _ser.write(('P%d:%.2f\n' % (pump_no, target)).encode('utf-8'))
     return {'ok': True, 'pump': pump_no, 'target': target, 'port': port}
@@ -306,6 +318,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 png = base64.b64decode(img)
                 result = print_card_page(png, top, mid, base)
                 self._json(200, {'ok': True, 'printer': result.get('printer')})
+            except Exception as e:
+                self._json(500, {'ok': False, 'error': str(e)})
+        elif self.path.startswith('/stop'):
+            try:
+                self._json(200, send_raw('S'))
+            except Exception as e:
+                self._json(500, {'ok': False, 'error': str(e)})
+        elif self.path.startswith('/reset'):
+            try:
+                self._json(200, send_raw('R'))
             except Exception as e:
                 self._json(500, {'ok': False, 'error': str(e)})
         else:
