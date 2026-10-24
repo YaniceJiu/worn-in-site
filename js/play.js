@@ -599,16 +599,16 @@ function buildScentPrompt(){
     '  silk/satin = smooth, cool, bright -> dew, moonlight, running water, glass; linen = light, breathable -> thin mist, morning breeze, sun-warmed bedsheets; leather = hard, tough, aged -> old wood, worn book cover, tobacco; fleece/knit = soft, plush, warm -> clouds, cotton fluff, milk foam, first snow.\n'+
     '- If the fabric is soft the imagery must be soft too; never pair soft fabric with hard, heavy imagery such as oak, rock or iron.\n'+
     '- Imagery must be concrete and visual, never abstract filler.\n'+
-    '- 12 words per line is the budget: fill the picture within it, and do not waste words on filler such as "very", "really", "especially".\n'+
+    '- 8 words per line is the budget: paint the picture within it, and cut every filler word ("very", "really", "especially", "it reminds me of").\n'+
     'Hard requirements:\n'+
-    '- Each line: at most 12 words and at most 1 comma.\n'+
+    '- Each line: at most 8 words and at most 1 comma.\n'+
     '- Natural spoken English, warm and understated — not written, not formal.\n'+
     '- Each line should naturally bring out its note (describe the smell; the note name may appear in the line or in "s").\n'+
     '- All 5 notes must come from the fixed recipe above and should not repeat. "s" MUST be the exact note name copied from that recipe (keep it in the original Chinese).\n'+
     '- If a note clashes with the fabric (e.g. a soft fabric with a woody note), write it as contrast rather than forcing a simile: write "the cloth is so soft, and yet there is wood in it", not "soft fabric, like an ancient oak".\n'+
     '- Forbidden: two lines in a row with the same structure, every line starting with "I", parallelism, or instruction-manual tone.\n'+
     'Style reference (shows only "short + with imagery"; swap in your own notes):\n'+
-    '{"lines":[{"t":"A dark green sweatshirt, like a vineyard.","s":"青草"},{"t":"It reminds me of grass after rain.","s":"海水"},{"t":"Clean lapels; saffron suits it.","s":"藏红花"},{"t":"The cloth is soft, like a sun-warmed cloud.","s":"白麝香"},{"t":"And a final touch of vetiver.","s":"香根草"},{"t":"Balanced now — one bottle of perfume.","s":""}]}\n'+
+    '{"lines":[{"t":"Dark green, like a vineyard.","s":"青草"},{"t":"Grass after rain.","s":"海水"},{"t":"Clean lapels; saffron fits.","s":"藏红花"},{"t":"Soft cloth, a sun-warmed cloud.","s":"白麝香"},{"t":"And a final touch of vetiver.","s":"香根草"},{"t":"Balanced — one bottle.","s":""}]}\n'+
     'Output JSON only: {"lines":[{"t":"sentence","s":"note"}, ...]} with 6 items. No extra text.';
 }
 async function genScentLinesLLM(){
@@ -620,7 +620,7 @@ async function genScentLinesLLM(){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({model:'gpt-4o-mini',temperature:0.9,response_format:{type:'json_object'},
         messages:[{role:'system',content:'You are an English scent-copy writer. Output JSON only.'},{role:'user',content:buildScentPrompt()}],
-        max_tokens:500})
+        max_tokens:360})
     });
     if(!resp.ok) return;
     const j=await resp.json();
@@ -640,7 +640,7 @@ async function genScentLinesLLM(){
       const clean=t=>{
         let s=String(t||'').trim();
         const commas=(s.match(/,/g)||[]).length;
-        if(!s || commas>1 || s.length>70) return '';
+        if(!s || commas>1 || s.length>48) return '';
         return s.replace(/[,.!?~…]+$/,'');
       };
       const got=o.lines.map(l=>({t:clean(l&&l.t), s:String((l&&l.s)||'').trim()}))
