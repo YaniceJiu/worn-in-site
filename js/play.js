@@ -67,6 +67,7 @@ function bottom(html){ const b=$('bottomBar'); if(html==null){b.classList.add('h
    ============================================================ */
 const SVGFRAMES={ball:[],liquid:[]};   // 段4矢量帧：原始 SVG 文本
 const SVGIMG={};                       // 'ball|hex|f' -> Image
+const SVGCANVAS={};                    // 'ball|hex|f' -> canvas（预渲染位图，动画零卡顿）
 function hexRGB(h){ const m=/^#?([0-9a-f]{6})$/i.exec(h||''); if(!m) return null;
   return {r:parseInt(m[1].slice(0,2),16),g:parseInt(m[1].slice(2,4),16),b:parseInt(m[1].slice(4,6),16)}; }
 // 舒适化：明度 >0.72 压缩；饱和度 >0.70 大幅降（克莱因蓝等艳色靠这步）
@@ -119,6 +120,45 @@ function svgImg(base,f,hex){
   const im=new Image(); im.src=url; SVGIMG[key]=im;
   return im;
 }
+
+/* ---- 预渲染：把「颜色×帧」SVG 提前画成离屏位图，播放时零卡顿、零频闪 ---- */
+function yarnSvgText(base,f,hex){
+  const t=SVGFRAMES[base]&&SVGFRAMES[base][f];
+  if(!t) return null;
+  return hex ? t.replace(/fill="#(?:ffffff|f4f1e9)"/gi,'fill="'+hex+'"') : t;
+}
+function prepareYarnBitmap(base,f,hex){
+  const key=base+'|'+(hex||'')+'|'+f;
+  if(SVGCANVAS[key]) return Promise.resolve(SVGCANVAS[key]);
+  const t=yarnSvgText(base,f,hex);
+  if(!t) return Promise.resolve(null);
+  return new Promise(res=>{
+    const url=URL.createObjectURL(new Blob([t],{type:'image/svg+xml'}));
+    const im=new Image();
+    im.onload=()=>{
+      const nw=im.naturalWidth||128, nh=im.naturalHeight||128;
+      const scale=512/Math.max(nw,nh);
+      const c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(nw*scale));
+      c.height=Math.max(1,Math.round(nh*scale));
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      SVGCANVAS[key]=c;
+      URL.revokeObjectURL(url);
+      res(c);
+    };
+    im.onerror=()=>{ URL.revokeObjectURL(url); res(null); };
+    im.src=url;
+  });
+}
+async function preRenderYarn(hexes){
+  const uniq=[...new Set((hexes||[]).filter(Boolean))];
+  const jobs=[];
+  for(const hex of uniq){
+    for(let f=0; f<SVGFRAMES.ball.length; f++) jobs.push(prepareYarnBitmap('ball',f,hex));
+    for(let f=0; f<SVGFRAMES.liquid.length; f++) jobs.push(prepareYarnBitmap('liquid',f,hex));
+  }
+  await Promise.all(jobs);
+}
 function drawYarnSVG(L,f,hex){
   const s=CFG.seg[3];
   const gx=s.grpX||0, gy=s.grpY||0, gs=(s.grpW!=null?s.grpW:100)/100;
@@ -128,17 +168,17 @@ function drawYarnSVG(L,f,hex){
   // 液面下降模式：球固定在满液帧（忽略毛球），液体由 lowerLiquidF（0~49）驱动
   const bf=lowerLiquidF!=null ? 51 : Math.min(51,Math.max(0,Math.round(f*51/end)));
   const lf=lowerLiquidF!=null ? Math.max(0,Math.min(49,Math.round(lowerLiquidF))) : Math.min(49,Math.max(0,Math.round(f*49/end)));
-  const bim=svgImg('ball',bf,hex), lim=svgImg('liquid',lf,hex);
+  const bim=SVGCANVAS['ball|'+(hex||'')+'|'+bf], lim=SVGCANVAS['liquid|'+(hex||'')+'|'+lf];
   // 球：ballX 中心横向偏移、ballY 向下、ballW 大小（单位均为瓶宽 %）
   const bw=((L.ballW!=null?L.ballW:62)/100)*dw;
   const bxc=ddx+((L.ballX!=null?L.ballX:50)/100)*dw;
-  if(bim&&bim.complete&&bim.naturalWidth){
+  if(bim){
     ctx.drawImage(bim, bxc-bw/2, ddy+((L.ballY!=null?L.ballY:0)/100)*dw, bw, bw);
   }
   // 液面：liqX 中心横向偏移、liqY 向下、liqW 宽（单位均为瓶宽 %）
   const lw=((L.liqW!=null?L.liqW:96)/100)*dw;
   const lxc=ddx+((L.liqX!=null?L.liqX:50)/100)*dw;
-  if(lim&&lim.complete&&lim.naturalWidth){
+  if(lim){
     const lh=lw*(378/352);
     ctx.drawImage(lim, lxc-lw/2, ddy+((L.liqY!=null?L.liqY:45)/100)*dw, lw, lh);
   }
@@ -370,6 +410,7 @@ function resetAll(replay){
   mirOn=false; mirJit=0; tremble=0; skipGif.clear();
   for(const k in gifState) delete gifState[k];
   for(const k in SVGIMG) delete SVGIMG[k];
+  for(const k in SVGCANVAS) delete SVGCANVAS[k];
   $('aiLoading').classList.add('hidden');
 }
 function playOnce(L){ return new Promise(res=>{ playGifLayer(L,1,res); }); }
@@ -652,14 +693,17 @@ async function yarnFlow(){
   yarns.forEach(L=>{ gifState[L.id]={f:start,acc:0,play:false,start,end,loops:1,cb:null}; });
   await ensureSvgFrames();
   hint(null);
+  // 提前算色并预渲染所有毛球/液面位图（与开场白并行；之后上色动画零卡顿）
+  const tints=tintColors();
+  const preRenderP=preRenderYarn(tints);
   // 开场白两句（毛球未上色画面，与 LLM 加载并行）
   const llmP=genScentLinesLLM();
   floatLine('Hello there.', 1700);
   const opening=(async()=>{ await sleep(1500); floatLine('Let me blend something for you.', 1900); })();
   await Promise.race([Promise.all([llmP, opening]), sleep(6000)]);
+  await preRenderP;   // 确保全部帧位图就绪再开始上色
   // 飘完字：上色（去重后主色重复填充，纯色=三球同色）
   yarnTint={};
-  const tints=tintColors();
   yarns.forEach((L,i)=>{ const hex=tints[i]; if(hex) yarnTint[L.id]=hex; });
   const level=yarns.map(()=>0);
   const seg=(AI.segLines||[]).slice(0,5);
