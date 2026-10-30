@@ -391,7 +391,7 @@ async function runAll(replay){
     const like=await askLikeIt();
     liked = (like!=='dont');    // don't like → 回到结果界面重新调 modifier
   }
-  // 询问是否 $35 买下
+  // 询问是否 $15 买下
   const buy = await askBuy();
   if(buy){
     await showPay();                 // Chase 付款码 + 手动确认收到钱
@@ -998,7 +998,7 @@ async function drawerCard(){
 }
 function askBuy(){
   clearFX(); bottom(null);
-  hint('Take this bottle home for $35?','Pay with Chase');
+  hint('Take this bottle home for $15?','Pay with Chase');
   bottom('<button id="buyNo">No thanks · scan for the recipe</button><button id="buyYes">Yes · buy it</button>');
   return new Promise(res=>{
     $('buyNo').onclick=()=>res(false);
@@ -1009,7 +1009,7 @@ function showPay(){
   return new Promise(res=>{
     clearFX(); bottom(null); hint(null);
     const el=document.createElement('div'); el.className='payBox';
-    el.innerHTML='<div class="payTitle">Scan to pay · Chase</div><div class="payQr" id="payQr"><span class="payLoading">Loading…</span></div><div class="payAmt">$35.00</div><div class="payStatus" id="payStatus">Waiting for scan…</div>';
+    el.innerHTML='<div class="payTitle">Scan to pay · Chase</div><div class="payQr" id="payQr"><span class="payLoading">Loading…</span></div><div class="payAmt">$15.00</div><div class="payStatus" id="payStatus">Waiting for scan…</div>';
     $('fx').appendChild(el);
     bottom('<button id="payDone">I have received the payment (confirm manually)</button>');
     let done=false, pollTimer=null;

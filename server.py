@@ -174,7 +174,7 @@ def print_card_page(card_png_bytes, top, mid, base):
 
 
 # ---------- Stripe（扫码收款） ----------
-STRIPE_AMOUNT_CENTS = 3500          # 默认 $35
+STRIPE_AMOUNT_CENTS = 1500          # 默认 $15
 STRIPE_PRODUCT_NAME = 'Worn-In Perfume'
 
 
