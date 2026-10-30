@@ -99,6 +99,7 @@ def send_pump(pump_no, target=1.0):
 
 # ---------- 电脑静默打印（衣服卡 + 配方 → HP DeskJet） ----------
 PRINTER_NAME = 'HP DeskJet 5000 series [BDEC02]'
+EXPORT_DIR = os.path.join(ROOT, 'print_exports')   # 每次 AI 生成的衣服卡+配方图存档目录
 
 
 def print_card_page(card_png_bytes, top, mid, base):
@@ -144,6 +145,13 @@ def print_card_page(card_png_bytes, top, mid, base):
 
     tmp = os.path.join(tempfile.gettempdir(), 'wornin_card_%d.png' % int(time.time() * 1000))
     page.save(tmp)
+
+    # 2.5) 存档到本地 print_exports/（每次生成的衣服卡+配方图都留一份）
+    try:
+        os.makedirs(EXPORT_DIR, exist_ok=True)
+        page.save(os.path.join(EXPORT_DIR, 'card_%s.png' % time.strftime('%Y%m%d_%H%M%S')))
+    except Exception as _e:
+        print('[print] 存档失败:', _e)
 
     # 3) 静默打印：BGR 位图 + StretchBlt（避免 ImageWin 的颜色反转/黑底）
     hprinter = win32print.OpenPrinter(PRINTER_NAME)
