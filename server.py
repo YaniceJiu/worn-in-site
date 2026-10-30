@@ -104,28 +104,30 @@ PRINTER_NAME = 'HP DeskJet 5000 series [BDEC02]'
 def print_card_page(card_png_bytes, top, mid, base):
     """把衣服卡 PNG + 配方文字合成一页 A4，静默打印到 HP 打印机。"""
     try:
-        from PIL import Image, ImageDraw, ImageFont, ImageWin
-        import win32print, win32ui
+        from PIL import Image, ImageDraw, ImageFont
+        import win32print, win32ui, win32gui, win32con
     except ImportError as e:
         raise RuntimeError('打印依赖缺失: pip install pywin32 pillow (' + str(e) + ')')
 
-    # 1) 合成 A4 竖版打印页（150dpi）
+    # 1) 合成 A4 竖版打印页（150dpi；W 取 4 的倍数，保证位图行对齐）
     W, H = 1240, 1754
     page = Image.new('RGB', (W, H), 'white')
     draw = ImageDraw.Draw(page)
 
+    # 衣服卡缩小到页宽 1/3
     card = Image.open(io.BytesIO(card_png_bytes)).convert('RGBA')
-    cw = int(W * 0.66)
+    cw = int(W / 3)
     ch = int(card.height * cw / card.width) if card.width else cw
-    if ch > int(H * 0.62):
-        ch = int(H * 0.62)
-        cw = int(card.width * ch / card.height) if card.height else cw
     card = card.resize((cw, ch), Image.LANCZOS)
-    card_bg = Image.new('RGB', (cw, ch), 'white')
-    card_bg.paste(card, (0, 0), card)
-    page.paste(card_bg, ((W - cw) // 2, 70))
+    # 白底合成：alpha_composite 把透明像素合成到白底（不会出现黑）
+    bg = Image.new('RGBA', (cw, ch), (255, 255, 255, 255))
+    card_rgb = Image.alpha_composite(bg, card).convert('RGB')
 
-    # 2) 配方文字
+    card_x = (W - cw) // 2
+    card_y = 120
+    page.paste(card_rgb, (card_x, card_y))
+
+    # 2) 配方文字（卡片下方，清晰可见）
     fdir = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'Fonts')
     def _font(size, bold=False):
         p = os.path.join(fdir, 'arialbd.ttf' if bold else 'arial.ttf')
@@ -133,17 +135,17 @@ def print_card_page(card_png_bytes, top, mid, base):
             return ImageFont.truetype(p, size)
         return ImageFont.load_default()
 
-    y = 70 + ch + 70
-    draw.text((W // 2, y), 'Worn-In · Your Recipe', font=_font(48, True), fill=(25, 25, 25), anchor='ma')
-    y += 96
+    y = card_y + ch + 90
+    draw.text((W // 2, y), 'Worn-In · Your Recipe', font=_font(46, True), fill=(25, 25, 25), anchor='ma')
+    y += 88
     for label, items in (('Top', top), ('Heart', mid), ('Base', base)):
-        draw.text((W // 2, y), label + '   ' + '  ·  '.join(items), font=_font(34), fill=(45, 45, 45), anchor='ma')
-        y += 58
+        draw.text((W // 2, y), label + '   ' + '  ·  '.join(items), font=_font(32), fill=(45, 45, 45), anchor='ma')
+        y += 54
 
     tmp = os.path.join(tempfile.gettempdir(), 'wornin_card_%d.png' % int(time.time() * 1000))
     page.save(tmp)
 
-    # 3) 静默打印到 HP
+    # 3) 静默打印：BGR 位图 + StretchBlt（避免 ImageWin 的颜色反转/黑底）
     hprinter = win32print.OpenPrinter(PRINTER_NAME)
     hdc = None
     try:
@@ -160,8 +162,24 @@ def print_card_page(card_png_bytes, top, mid, base):
         dw, dh = int(iw * scale), int(ih * scale)
         dx = ox + (pw - dw) // 2
         dy = oy + (ph - dh) // 2
-        dib = ImageWin.Dib(page)
-        dib.draw(hdc.GetHandleOutput(), (dx, dy, dx + dw, dy + dh))
+
+        # 保存为 BMP 并用 LoadBitmapFile 加载（PIL 负责颜色顺序，不会黑底/反转）
+        bmp_path = os.path.join(tempfile.gettempdir(), 'wornin_card_%d.bmp' % int(time.time() * 1000))
+        page.save(bmp_path, 'BMP')
+        bmp = win32ui.CreateBitmap()
+        with open(bmp_path, 'rb') as _f:
+            bmp.LoadBitmapFile(_f)
+
+        memdc = hdc.CreateCompatibleDC()
+        old = memdc.SelectObject(bmp)
+        win32gui.StretchBlt(
+            int(hdc.GetHandleOutput()), dx, dy, dw, dh,
+            int(memdc.GetHandleOutput()), 0, 0, iw, ih,
+            win32con.SRCCOPY)
+        memdc.SelectObject(old)
+        try: os.remove(bmp_path)
+        except Exception: pass
+
         hdc.EndPage()
         hdc.EndDoc()
         return {'ok': True, 'printer': PRINTER_NAME}
