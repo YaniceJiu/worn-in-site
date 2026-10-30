@@ -9,22 +9,22 @@
 const STYLE_DEFS=[
   {name:'wild',emoji:'🌿',
    g:{},c:{'black':1,'brown':1,'camel':1,'wine red':0.5},p:{'leopard/animal print':3},f:{'leather':3,'fleece':1},
-   top:['小豆蔻','柑橘','粉红胡椒'],mid:['皮革','藏红花','焚香','黑醋栗芽'],base:['乳香','广藿香','琥珀','烟草木']},
+   top:['柑橘','小豆蔻'],mid:['皮革','藏红花','焚香'],base:['乳香','琥珀','烟草木']},
   {name:'sweet',emoji:'🍬',
    g:{'short skirt':1,'dress':1},c:{'pink':2,'rose red':2,'light pink':2,'white':1,'light grey':1,'lilac':1,'cream':1},p:{'polka dot':3,'floral':2},f:{'silk/satin':1},
-   top:['青草','樱花','蜜桃','橙花'],mid:['紫罗兰','乳香','栀子花','棉花糖'],base:['香草','白木','鸢尾脂']},
+   top:['樱花','蜜桃','橙花'],mid:['栀子花','棉花糖'],base:['香草','白木']},
   {name:'sporty',emoji:'🏃',
    g:{'sweatshirt/sweater':2,'tee/top':2,'top':2,'shorts':2,'tank':1},c:{'black':0.5,'white':0.5,'blue':0.5,'navy':0.5,'sky blue':0.5,'light blue':0.5,'denim blue':0.5},p:{'stripe':1},f:{'tech/sport fabric':3,'denim':1.5},
-   top:['甜橙','野莓','葡萄柚','薄荷'],mid:['依兰','广藿香','海水'],base:['岩兰草','松针','肉豆蔻']},
+   top:['甜橙','薄荷'],mid:['海水','依兰'],base:['岩兰草','松针','肉豆蔻']},
   {name:'office',emoji:'👔',
    g:{'shirt':3,'jacket':3},c:{'black':1,'white':1,'grey':1,'dark grey':1,'navy':1,'dark blue':1},p:{'check':2,'stripe':1},f:{'cotton':0.5},
-   top:['白茶','佛手柑','绿叶'],mid:['橡木苔','天竺葵','雪松'],base:['白麝香','香根草','龙涎香醚']},
+   top:['白茶','佛手柑'],mid:['橡木苔','雪松','天竺葵'],base:['白麝香','香根草']},
   {name:'natural/home',emoji:'🏡',
    g:{'dress':1,'sweatshirt/sweater':1,'long dress':1},c:{'beige':2,'khaki':2,'green':2,'olive':2,'deep olive':2,'army green':2,'light green':1.5,'brown':2,'cream':1,'camel':1},p:{'floral':1,'solid':0.5},f:{'linen':3,'fleece':2,'knit/sweater':2,'denim':0.5},
-   top:['柑橘','郁金香','无花果叶','竹叶'],mid:['白茶','白麝香','铃兰','小黄瓜','松针'],base:['橡木','香葵子','苔藓']},
+   top:['柑橘','竹叶'],mid:['白茶','铃兰','松针'],base:['橡木','苔藓']},
   {name:'evening',emoji:'👗',
    g:{'dress':1.5,'long dress':1.5},c:{'black':1,'navy':1,'dark blue':1,'purple':1,'wine red':0.5,'dark grey':0.5},p:{'solid':0.5},f:{'silk/satin':2},
-   top:['小苍兰','海洋','乌龙','香槟气泡'],mid:['白茶','仙客来','玫瑰净油','木兰'],base:['檀木','零陵香豆','麝香酮','鸢尾根']},
+   top:['小苍兰','乌龙'],mid:['玫瑰净油','木兰'],base:['檀木','鸢尾根']},
 ];
 
 // ============================================================
@@ -33,33 +33,33 @@ const STYLE_DEFS=[
 const RECIPES={
   'wild':{
     'meadow':{top:['柑橘','小豆蔻'],mid:['藏红花','皮革'],base:['烟草木','乳香','琥珀']},
-    'biker':{top:['小豆蔻','粉红胡椒'],mid:['皮革','藏红花','黑醋栗芽'],base:['琥珀','烟草木','广藿香']},
-    'nightfall':{top:['粉红胡椒','黑醋栗芽'],mid:['焚香','皮革'],base:['乳香','琥珀','广藿香']}
+    'biker':{top:['小豆蔻','柑橘'],mid:['皮革','焚香'],base:['琥珀','烟草木','乳香']},
+    'nightfall':{top:['柑橘','小豆蔻'],mid:['焚香','藏红花'],base:['乳香','琥珀','烟草木']}
   },
   'office':{
     'meeting':{top:['白茶','佛手柑'],mid:['雪松','橡木苔'],base:['白麝香','香根草']},
-    'coffee':{top:['白茶','绿叶'],mid:['天竺葵','雪松'],base:['白麝香','檀木','龙涎香醚']},
-    'weekend':{top:['佛手柑','绿叶'],mid:['天竺葵','橡木苔'],base:['香根草','龙涎香醚']}
+    'coffee':{top:['佛手柑','白茶'],mid:['天竺葵','雪松'],base:['白麝香','香根草']},
+    'weekend':{top:['白茶','佛手柑'],mid:['天竺葵','橡木苔'],base:['香根草','白麝香']}
   },
   'sweet':{
-    'candy':{top:['蜜桃','橙花','樱花'],mid:['棉花糖','栀子花','乳香'],base:['香草','白木']},
-    'fruity floral':{top:['樱花','橙花','蜜桃'],mid:['栀子花','紫罗兰'],base:['鸢尾脂','白木']},
-    'delicate':{top:['青草','樱花'],mid:['紫罗兰','乳香'],base:['白木','鸢尾脂']}
+    'candy':{top:['蜜桃','橙花','樱花'],mid:['棉花糖','栀子花'],base:['香草','白木']},
+    'fruity floral':{top:['樱花','橙花','蜜桃'],mid:['栀子花','棉花糖'],base:['白木','香草']},
+    'delicate':{top:['樱花','蜜桃'],mid:['栀子花','棉花糖'],base:['香草','白木']}
   },
   'sporty':{
-    'sea salt':{top:['野莓','薄荷'],mid:['海水','依兰'],base:['岩兰草','松针']},
-    'forest':{top:['甜橙','葡萄柚','薄荷'],mid:['松针','广藿香'],base:['岩兰草','肉豆蔻']},
-    'mint':{top:['薄荷','甜橙'],mid:['依兰','海水'],base:['岩兰草','松针']}
+    'sea salt':{top:['薄荷','甜橙'],mid:['海水','依兰'],base:['岩兰草','松针']},
+    'forest':{top:['甜橙','薄荷'],mid:['依兰','海水'],base:['松针','肉豆蔻']},
+    'mint':{top:['薄荷','甜橙'],mid:['海水','依兰'],base:['岩兰草','松针']}
   },
   'natural/home':{
-    'after rain':{top:['竹叶','郁金香','无花果叶'],mid:['小黄瓜','铃兰','白茶'],base:['苔藓','橡木']},
-    'warm wood':{top:['柑橘','无花果叶'],mid:['白麝香','白茶'],base:['橡木','香葵子','苔藓']},
-    'tea':{top:['柑橘','郁金香'],mid:['白茶','铃兰','松针'],base:['香葵子','橡木']}
+    'after rain':{top:['竹叶','柑橘'],mid:['铃兰','白茶'],base:['苔藓','橡木']},
+    'warm wood':{top:['柑橘','竹叶'],mid:['白茶','松针'],base:['橡木','苔藓']},
+    'tea':{top:['竹叶','柑橘'],mid:['白茶','铃兰'],base:['橡木','苔藓']}
   },
   'evening':{
     'rose':{top:['小苍兰','乌龙'],mid:['玫瑰净油','木兰'],base:['檀木','鸢尾根']},
-    'champagne':{top:['香槟气泡','小苍兰','乌龙'],mid:['白茶','仙客来'],base:['零陵香豆','麝香酮']},
-    'oriental':{top:['乌龙','海洋'],mid:['玫瑰净油','仙客来'],base:['檀木','零陵香豆','麝香酮','鸢尾根']}
+    'champagne':{top:['乌龙','小苍兰'],mid:['木兰','玫瑰净油'],base:['鸢尾根','檀木']},
+    'oriental':{top:['小苍兰','乌龙'],mid:['玫瑰净油','木兰'],base:['檀木','鸢尾根']}
   }
 };
 // 变种选择：按「最强属性」分流（常见来源按冷暖/深浅拆），无强信号随机兜底
