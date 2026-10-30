@@ -1086,7 +1086,7 @@ async function runGarmentImage(){
     const resp=await fetch('https://api.openai.com/v1/images/edits',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'gpt-image-1',prompt:GARMENT_PROMPT,images:[{image_url:'data:image/jpeg;base64,'+b64}],background:'transparent',output_format:'png',size:'1024x1536',quality:'medium'}),
+      body:JSON.stringify({model:'gpt-image-1.5',prompt:GARMENT_PROMPT,images:[{image_url:'data:image/jpeg;base64,'+b64}],background:'transparent',output_format:'png',size:'1024x1536',quality:'medium'}),
     });
     if(!resp.ok){ garmentErr='AI image error (HTTP '+resp.status+') — check API credits/balance'; console.warn('[garment-img]',resp.status,(await resp.text()).slice(0,200)); return null; }
     const j=await resp.json();
