@@ -1332,15 +1332,25 @@ function showCam(){
       cd.classList.remove('hidden');
       for(let i=3;i>=1;i--){ num.textContent=i; restartRing(); await sleep(900); }
       cd.classList.add('hidden');
-      // iOS 已把画面转正（虽然 videoWidth/videoHeight 报横），直接镜像即可，不要旋转
+      // 横传感器流 → 旋转90°成竖屏（正常 iPad 取景），再镜像
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
-      shot.width=vw; shot.height=vh;
-      const ctx2=shot.getContext('2d');
-      ctx2.setTransform(1,0,0,1,0,0);
-      ctx2.translate(vw,0);
-      ctx2.scale(-1,1);
-      ctx2.drawImage(v,0,0,vw,vh);
-      showDbg('cam '+vw+'x'+vh+' → shot '+shot.width+'x'+shot.height+' · mirrored');
+      const landscape=vw>vh;
+      if(landscape){
+        shot.width=vh; shot.height=vw;   // 竖屏画布
+        const ctx2=shot.getContext('2d');
+        ctx2.setTransform(1,0,0,1,0,0);
+        ctx2.rotate(-Math.PI/2);
+        ctx2.scale(-1,1);
+        ctx2.drawImage(v,0,0,vw,vh);
+      }else{
+        shot.width=vw; shot.height=vh;
+        const ctx2=shot.getContext('2d');
+        ctx2.setTransform(1,0,0,1,0,0);
+        ctx2.translate(vw,0);
+        ctx2.scale(-1,1);
+        ctx2.drawImage(v,0,0,vw,vh);
+      }
+      showDbg('cam '+vw+'x'+vh+' → shot '+shot.width+'x'+shot.height);
       await stopCam();
       v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
       busy=false;
