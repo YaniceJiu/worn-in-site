@@ -1072,7 +1072,7 @@ Keep the entire collage FLAT. All paper pieces remain visually flat on the same 
 
 The garment should read immediately as a handmade paper collage: broad silhouettes, large uninterrupted paper surfaces, subtle flat overlaps, carefully hand-cut slightly imperfect edges, subtle natural paper fibers and faint printed textures. The aesthetic sits between fashion collage, Japanese paper craft, material study, and minimal graphic abstraction.
 
-Present the complete reconstructed outfit alone, without a human body or mannequin, vertically centered. The garment occupies approximately 45-55% of the image height with generous transparent empty space on every side. The entire area outside the garment must be TRUE TRANSPARENCY with a clean alpha channel. No white, ivory, beige, gray, colored or paper background, no floor, wall, table, sketchbook, or canvas texture, no checkerboard or fake transparency.
+Present the complete reconstructed outfit alone, without a human body or mannequin, perfectly centered both horizontally and vertically. The garment occupies approximately 62-72% of the image height with only a modest transparent margin on every side, so the garment clearly fills the center of the frame. The entire area outside the garment must be TRUE TRANSPARENCY with a clean alpha channel. No white, ivory, beige, gray, colored or paper background, no floor, wall, table, sketchbook, or canvas texture, no checkerboard or fake transparency.
 
 Use soft, even, neutral illumination only to reveal subtle material qualities. No directional lighting, no dramatic highlights, no dimensional shading, no cast shadows, no halo, glow, outline or border around the garment, no additional objects.
 
