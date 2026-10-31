@@ -54,7 +54,8 @@ html,body{height:100%;overflow:hidden;background:#15120e;font-family:"PingFang S
 }
 #camView{position:absolute;inset:0;background:#000;overflow:hidden}
 #camView video,#camView canvas{width:100%;height:100%;object-fit:cover}
-#camView video{transform:scaleX(-1)}
+#camView canvas{transform:scale(0.5)}
+#camView video{transform:scaleX(-1) scale(0.5)}
 #camClose{position:absolute;top:16px;left:16px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(0,0,0,.32);color:#fff;font-size:18px;cursor:pointer;z-index:5}
 #countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4}
 #cdRing{position:absolute;width:230px;height:230px}
