@@ -124,8 +124,10 @@ def print_card_page(card_png_bytes, top, mid, base):
     bg = Image.new('RGBA', (cw, ch), (255, 255, 255, 255))
     card_rgb = Image.alpha_composite(bg, card).convert('RGB')
 
+    # 卡片 + 配方作为一个整体，在页面垂直居中（衣服卡不再偏上方）
+    total_h = ch + 90 + 88 + 3 * 54   # 卡片高 + 间距 + 标题行 + 3 行配方
+    card_y = max(40, (H - total_h) // 2)
     card_x = (W - cw) // 2
-    card_y = 120
     page.paste(card_rgb, (card_x, card_y))
 
     # 2) 配方文字（卡片下方，清晰可见）
