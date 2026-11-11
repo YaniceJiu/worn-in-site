@@ -84,16 +84,29 @@ def _open_serial():
 
 
 def send_raw(cmd):
-    port = _open_serial()
-    _ser.reset_input_buffer()
-    _ser.write((cmd + '\n').encode('utf-8'))
+    port = _write_serial(cmd)
     return {'ok': True, 'cmd': cmd, 'port': port}
 
 
-def send_pump(pump_no, target=1.0):
+def _write_serial(cmd):
+    global _ser
     port = _open_serial()
-    _ser.reset_input_buffer()
-    _ser.write(('P%d:%.2f\n' % (pump_no, target)).encode('utf-8'))
+    try:
+        _ser.reset_input_buffer()
+        _ser.write((cmd + '\n').encode('utf-8'))
+    except Exception:
+        # 串口句柄失效（设备复位/重插）→ 关掉重开，重试一次
+        try: _ser.close()
+        except Exception: pass
+        _ser = None
+        port = _open_serial()
+        _ser.reset_input_buffer()
+        _ser.write((cmd + '\n').encode('utf-8'))
+    return port
+
+
+def send_pump(pump_no, target=1.0):
+    port = _write_serial('P%d:%.2f' % (pump_no, target))
     return {'ok': True, 'pump': pump_no, 'target': target, 'port': port}
 
 
@@ -124,10 +137,8 @@ def print_card_page(card_png_bytes, top, mid, base):
     bg = Image.new('RGBA', (cw, ch), (255, 255, 255, 255))
     card_rgb = Image.alpha_composite(bg, card).convert('RGB')
 
-    # 卡片 + 配方作为一个整体，在页面垂直居中（衣服卡不再偏上方）
-    total_h = ch + 90 + 88 + 3 * 54   # 卡片高 + 间距 + 标题行 + 3 行配方
-    card_y = max(40, (H - total_h) // 2)
     card_x = (W - cw) // 2
+    card_y = 120
     page.paste(card_rgb, (card_x, card_y))
 
     # 2) 配方文字（卡片下方，清晰可见）
@@ -366,21 +377,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+    import ssl as _ssl
+    import threading as _threading
+
     socketserver.ThreadingTCPServer.allow_reuse_address = True
-    with socketserver.ThreadingTCPServer(('0.0.0.0', PORT), Handler) as httpd:
-        scheme = 'https' if USE_HTTPS else 'http'
-        if USE_HTTPS:
-            import ssl
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ctx.load_cert_chain(os.path.join(ROOT, 'certs', 'server.pem'),
-                                os.path.join(ROOT, 'certs', 'server.key'))
-            httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
-        print('Serving on %s://127.0.0.1:%d  (root=%s)' % (scheme, PORT, ROOT))
-        print('局域网其它设备: %s://%s:%d/play.html' % (scheme, lan_ip(), PORT))
-        print('泵接口: POST /pump {"style":"甜美少女"}')
-        print('打印接口: POST /print {"image":"data:image/png;base64,...","top":[],"mid":[],"base":[]} → %s' % PRINTER_NAME)
-        if load_stripe_key():
-            print('Stripe: 已配置密钥（扫码收款可用）')
-        else:
-            print('Stripe: 未配置密钥 —— 创建 stripe_key.txt 填入 sk_test_.../sk_live_... 后即可扫码收款')
-        httpd.serve_forever()
+
+    # 单进程同时监听两个端口，共享同一个串口，永不冲突：
+    #   http  :8904 —— 电脑本机 / 测试台（无证书提示）
+    #   https :8443 —— iPad（摄像头必须 HTTPS）
+    http_http = socketserver.ThreadingTCPServer(('0.0.0.0', 8904), Handler)
+    http_https = socketserver.ThreadingTCPServer(('0.0.0.0', 8443), Handler)
+    _ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_SERVER)
+    _ctx.load_cert_chain(os.path.join(ROOT, 'certs', 'server.pem'),
+                         os.path.join(ROOT, 'certs', 'server.key'))
+    http_https.socket = _ctx.wrap_socket(http_https.socket, server_side=True)
+
+    ip = lan_ip()
+    print('=== Worn-In 服务器（单进程 · 双端口 · 共享串口）===')
+    print('  电脑本机 / 测试台:  http://127.0.0.1:8904/pump-test.html')
+    print('  iPad（局域网）:      https://%s:8443/play.html' % ip)
+    print('  泵接口: POST /pump {"style":"..."} 或 {"pump":N,"duration":s}')
+    print('  打印接口: POST /print → %s' % PRINTER_NAME)
+    if load_stripe_key():
+        print('  Stripe: 已配置密钥（扫码收款可用）')
+    else:
+        print('  Stripe: 未配置密钥 —— 创建 stripe_key.txt 后即可扫码收款')
+
+    _threading.Thread(target=http_http.serve_forever, daemon=True).start()
+    print('HTTP  :8904 已启动')
+    http_https.serve_forever()
