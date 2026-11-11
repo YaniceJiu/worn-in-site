@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拼贴编辑器 · Worn-In</title>
+<style>
+  body{margin:0;background:#17130f;color:#eee;font-family:sans-serif;display:flex;height:100vh;overflow:hidden}
+  #stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto}
+  canvas{background:#2a251f;box-shadow:0 0 40px rgba(0,0,0,.6);border-radius:4px;max-width:100%;max-height:100%}
+  #panel{width:270px;background:#221d18;padding:14px;display:flex;flex-direction:column;gap:8px;border-left:1px solid #3a322a;overflow-y:auto}
+  #panel h3{margin:0 0 4px;color:#e6c383;font-size:16px}
+  .hint{font-size:11px;color:#8b8070;line-height:1.6;margin-bottom:6px}
+  #elList{display:flex;flex-direction:column;gap:4px}
+  #elList button{width:100%;padding:7px 10px;background:#2b2620;color:#ddd;border:1px solid #3a332a;border-radius:7px;cursor:pointer;text-align:left;font-size:13px}
+  #elList button.active{background:#3a2f22;border-color:#c9a05c;color:#e6c383}
+  label{font-size:12px;color:#aaa;margin-top:2px;display:block}
+  input[type=range]{width:100%;accent-color:#c9a05c}
+  input[type=number]{width:100%;background:#14110d;color:#eee;border:1px solid #4a4134;border-radius:6px;padding:6px;box-sizing:border-box}
+  button.act{padding:11px;border:none;border-radius:8px;background:#c9a05c;color:#231a10;font-weight:700;cursor:pointer;margin-top:4px;font-size:14px}
+  button.ghost{padding:9px;border:1px solid #4a4134;border-radius:8px;background:transparent;color:#cbb99a;cursor:pointer;font-size:13px}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv" width="1200" height="1200"></canvas></div>
+<div id="panel">
+  <h3>拼贴编辑器</h3>
+  <div class="hint">· 拖拽元素移动<br>· 鼠标滚轮缩放（悬停在该元素上）<br>· 下方滑块 / 输入框调大小、旋转、位置<br>· 点元素名或直接点画布上的元素来选中</div>
+  <div id="elList"></div>
+  <label>X 位置</label><input type="number" id="inX" step="1">
+  <label>Y 位置</label><input type="number" id="inY" step="1">
+  <label>大小 %</label><input type="range" id="inScale" min="10" max="250" step="1">
+  <label>旋转 °</label><input type="range" id="inRot" min="-180" max="180" step="1">
+  <button class="act" id="clipBtn">✂ 剪裁底布（画圈）</button>
+  <button class="act" id="export">导出 PNG</button>
+  <button class="ghost" id="reset">重置布局</button>
+</div>
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const imgs = {};
+
+const DEFAULT_LAYOUT = [
+  {id:'base',    name:'底布 · 乌龙亚麻',   src:'assets/collage/base_oolong.png',   x:600, y:600, s:1.0, r:0},
+  {id:'vetiver', name:'香根草 · 橡木',     src:'assets/collage/spice_vetiver.png', x:430, y:455, s:0.5, r:-14},
+  {id:'nutmeg',  name:'肉豆蔻',            src:'assets/collage/spice_nutmeg.png',  x:770, y:465, s:0.5, r:12},
+  {id:'freesia', name:'小苍兰 · 玫瑰精油', src:'assets/collage/spice_freesia.png', x:600, y:800, s:0.5, r:0},
+];
+const ELS = DEFAULT_LAYOUT.map(e => ({...e}));
+let sel = ELS[ELS.length - 1];
+
+// 加载图片
+function loadImages(){
+  for(const e of ELS){
+    const im = new Image();
+    im.onload = () => draw();
+    im.src = e.src;
+    imgs[e.src] = im;
+  }
+}
+
+function hit(mx, my){
+  for(let i = ELS.length - 1; i >= 0; i--){
+    const e = ELS[i], img = imgs[e.src];
+    if(!img) continue;
+    const w = img.width * e.s, h = img.height * e.s;
+    const dx = mx - e.x, dy = my - e.y;
+    const rad = -e.r * Math.PI / 180;
+    const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+    if(Math.abs(lx) <= w / 2 && Math.abs(ly) <= h / 2) return e;
+  }
+  return null;
+}
+
+function draw(){
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  for(const e of ELS){
+    const img = imgs[e.src];
+    if(!img || img.complete === false) continue;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.r * Math.PI / 180);
+    const w = img.width * e.s, h = img.height * e.s;
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+  // 选中框
+  const img = imgs[sel.src];
+  if(img && img.complete !== false){
+    const w = img.width * sel.s, h = img.height * sel.s;
+    ctx.save();
+    ctx.translate(sel.x, sel.y);
+    ctx.rotate(sel.r * Math.PI / 180);
+    ctx.strokeStyle = '#e6c383';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(-w/2, -h/2, w, h);
+    ctx.setLineDash([]);
+    // 四角手柄
+    ctx.fillStyle = '#e6c383';
+    for(const [hx, hy] of [[-w/2,-h/2],[w/2,-h/2],[-w/2,h/2],[w/2,h/2]]){
+      ctx.beginPath(); ctx.arc(hx, hy, 7, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // 剪裁预览线
+  if(clipMode && clipPoints.length){
+    ctx.save();
+    ctx.strokeStyle = '#ff6b6b';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    clipPoints.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    if(clipPoints.length > 1) ctx.lineTo(clipPoints[0].x, clipPoints[0].y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  syncPanel();
+}
+
+function syncPanel(){
+  document.getElementById('inX').value = Math.round(sel.x);
+  document.getElementById('inY').value = Math.round(sel.y);
+  document.getElementById('inScale').value = Math.round(sel.s * 100);
+  document.getElementById('inRot').value = Math.round(sel.r);
+  document.querySelectorAll('#elList button').forEach(b => b.classList.toggle('active', b.dataset.id === sel.id));
+}
+
+function renderList(){
+  const box = document.getElementById('elList');
+  box.innerHTML = '';
+  for(const e of ELS){
+    const b = document.createElement('button');
+    b.textContent = e.name;
+    b.dataset.id = e.id;
+    b.onclick = () => { sel = e; draw(); };
+    box.appendChild(b);
+  }
+}
+
+// ---- 交互 ----
+let dragging = null, lastX = 0, lastY = 0;
+let clipMode = false, clipPoints = [];
+function canvasPos(ev){
+  const r = cv.getBoundingClientRect();
+  return [ (ev.clientX - r.left) * (cv.width / r.width), (ev.clientY - r.top) * (cv.height / r.height) ];
+}
+
+function applyClip(){
+  // 画圈剪裁：只保留圈内底布
+  const base = ELS[0];
+  const img = imgs[base.src];
+  if(!img || clipPoints.length < 3) return;
+  const local = clipPoints.map(p => {
+    const dx = p.x - base.x, dy = p.y - base.y;
+    const rad = -base.r * Math.PI / 180;
+    const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+    return [lx + img.width / 2, ly + img.height / 2];
+  });
+  const oc = document.createElement('canvas');
+  oc.width = img.width; oc.height = img.height;
+  const ox = oc.getContext('2d');
+  ox.save();
+  ox.beginPath();
+  local.forEach(([x, y], i) => i ? ox.lineTo(x, y) : ox.moveTo(x, y));
+  ox.closePath();
+  ox.clip();
+  ox.drawImage(img, 0, 0);
+  ox.restore();
+  imgs[base.src] = oc;   // 用剪裁后的底布替换
+  clipMode = false; clipPoints = [];
+  draw();
+}
+
+cv.addEventListener('mousedown', ev => {
+  const [mx, my] = canvasPos(ev);
+  if(clipMode){ clipPoints = [{x:mx, y:my}]; draw(); return; }
+  const e = hit(mx, my);
+  if(e){ sel = e; dragging = e; lastX = mx; lastY = my; }
+  draw();
+});
+cv.addEventListener('mousemove', ev => {
+  const [mx, my] = canvasPos(ev);
+  if(clipMode && clipPoints.length){
+    const last = clipPoints[clipPoints.length - 1];
+    if(Math.hypot(mx - last.x, my - last.y) > 4) clipPoints.push({x:mx, y:my});
+    draw();
+    return;
+  }
+  if(dragging){
+    dragging.x += mx - lastX;
+    dragging.y += my - lastY;
+    lastX = mx; lastY = my;
+    draw();
+  }
+});
+window.addEventListener('mouseup', () => {
+  if(clipMode && clipPoints.length >= 3){ applyClip(); }
+  else dragging = null;
+});
+cv.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const [mx, my] = canvasPos(ev);
+  const e = hit(mx, my);
+  if(e){ sel = e; e.s = Math.max(0.1, Math.min(3, e.s * (ev.deltaY < 0 ? 1.06 : 0.94))); draw(); }
+}, {passive:false});
+
+// 面板
+document.getElementById('inX').oninput = e => { sel.x = +e.target.value; draw(); };
+document.getElementById('inY').oninput = e => { sel.y = +e.target.value; draw(); };
+document.getElementById('inScale').oninput = e => { sel.s = (+e.target.value) / 100; draw(); };
+document.getElementById('inRot').oninput = e => { sel.r = +e.target.value; draw(); };
+
+document.getElementById('export').onclick = () => {
+  const a = document.createElement('a');
+  a.download = 'wornin_collage.png';
+  a.href = cv.toDataURL('image/png');
+  a.click();
+};
+document.getElementById('clipBtn').onclick = () => {
+  clipMode = !clipMode; clipPoints = [];
+  document.getElementById('clipBtn').textContent = clipMode ? '✂ 画圈中… 松开鼠标完成剪裁' : '✂ 剪裁底布（画圈）';
+  document.getElementById('clipBtn').style.background = clipMode ? '#ff8a6b' : '#c9a05c';
+  draw();
+};
+document.getElementById('reset').onclick = () => {
+  DEFAULT_LAYOUT.forEach((d, i) => Object.assign(ELS[i], d));
+  // 恢复底布为原始图片（撤销剪裁）
+  const base = ELS[0];
+  const im = new Image();
+  im.onload = () => draw();
+  im.src = base.src;
+  imgs[base.src] = im;
+  sel = ELS[ELS.length - 1];
+  draw();
+};
+
+renderList();
+loadImages();
+draw();
+</script>
+</body>
+</html>
