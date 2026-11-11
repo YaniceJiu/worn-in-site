@@ -454,7 +454,7 @@ async function waitAI(){
   hideAI();
 }
 /* ---------- 电脑泵桥接：AI 风格 → 本机 pump_bridge.py → ESP32 泵 ---------- */
-const PUMP_MAP={wild:1,office:2,sweet:3,sporty:4,'natural/home':5,evening:6};
+const PUMP_MAP={wild:3,office:2,sweet:0,sporty:4,'natural/home':5,evening:6};   // sweet=0 暂时禁用；wild 改用泵3
 const PUMP_URL='/pump'; // 同源：本机或局域网其它设备打开，都打到这台电脑的 server.py
 async function sendToPump(style, duration){
   const pump=PUMP_MAP[style];
@@ -1072,7 +1072,7 @@ Keep the entire collage FLAT. All paper pieces remain visually flat on the same 
 
 The garment should read immediately as a handmade paper collage: broad silhouettes, large uninterrupted paper surfaces, subtle flat overlaps, carefully hand-cut slightly imperfect edges, subtle natural paper fibers and faint printed textures. The aesthetic sits between fashion collage, Japanese paper craft, material study, and minimal graphic abstraction.
 
-Present the complete reconstructed outfit alone, without a human body or mannequin, perfectly centered both horizontally and vertically in the frame. The garment occupies approximately 60-70% of the image height with only a modest transparent margin on every side. The entire area outside the garment must be TRUE TRANSPARENCY with a clean alpha channel. No white, ivory, beige, gray, colored or paper background, no floor, wall, table, sketchbook, or canvas texture, no checkerboard or fake transparency.
+Present the complete reconstructed outfit alone, without a human body or mannequin, vertically centered. The garment occupies approximately 45-55% of the image height with generous transparent empty space on every side. The entire area outside the garment must be TRUE TRANSPARENCY with a clean alpha channel. No white, ivory, beige, gray, colored or paper background, no floor, wall, table, sketchbook, or canvas texture, no checkerboard or fake transparency.
 
 Use soft, even, neutral illumination only to reveal subtle material qualities. No directional lighting, no dramatic highlights, no dimensional shading, no cast shadows, no halo, glow, outline or border around the garment, no additional objects.
 
@@ -1332,25 +1332,15 @@ function showCam(){
       cd.classList.remove('hidden');
       for(let i=3;i>=1;i--){ num.textContent=i; restartRing(); await sleep(900); }
       cd.classList.add('hidden');
-      // 横传感器流 → 旋转90°成竖屏（正常 iPad 取景），再镜像
+      // iOS 已把画面转正（虽然 videoWidth/videoHeight 报横），直接镜像即可，不要旋转
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
-      const landscape=vw>vh;
-      if(landscape){
-        shot.width=vh; shot.height=vw;   // 竖屏画布
-        const ctx2=shot.getContext('2d');
-        ctx2.setTransform(1,0,0,1,0,0);
-        ctx2.rotate(-Math.PI/2);
-        ctx2.scale(-1,1);
-        ctx2.drawImage(v,0,0,vw,vh);
-      }else{
-        shot.width=vw; shot.height=vh;
-        const ctx2=shot.getContext('2d');
-        ctx2.setTransform(1,0,0,1,0,0);
-        ctx2.translate(vw,0);
-        ctx2.scale(-1,1);
-        ctx2.drawImage(v,0,0,vw,vh);
-      }
-      showDbg('cam '+vw+'x'+vh+' → shot '+shot.width+'x'+shot.height);
+      shot.width=vw; shot.height=vh;
+      const ctx2=shot.getContext('2d');
+      ctx2.setTransform(1,0,0,1,0,0);
+      ctx2.translate(vw,0);
+      ctx2.scale(-1,1);
+      ctx2.drawImage(v,0,0,vw,vh);
+      showDbg('cam '+vw+'x'+vh+' → shot '+shot.width+'x'+shot.height+' · mirrored');
       await stopCam();
       v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
       busy=false;

@@ -14,6 +14,8 @@
   #pumps{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
   .pump{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:12px;border:none;background:#2a221a;color:#f0e3cd;font-size:16px;font-weight:700;cursor:pointer}
   .pump:active{background:#3a2f22}
+  .pump:disabled{background:#1c1712;color:#5a4f42;cursor:not-allowed}
+  .pump:disabled small{color:#4a4134}
   .pump small{font-weight:400;color:#a9947a}
   .danger{display:flex;gap:10px}
   .danger button{flex:1;padding:14px;border-radius:12px;border:none;font-size:16px;font-weight:700;cursor:pointer}
@@ -32,12 +34,18 @@
 </div>
 
 <div id="pumps">
-  <button class="pump" data-p="1">Pump 1<small>Wild</small></button>
+  <button class="pump" data-p="1" disabled>Pump 1<small>Wild · 暂时不用</small></button>
   <button class="pump" data-p="2">Pump 2<small>Office</small></button>
-  <button class="pump" data-p="3">Pump 3<small>Sweet</small></button>
+  <button class="pump" data-p="3">Pump 3<small>Wild</small></button>
   <button class="pump" data-p="4">Pump 4<small>Sporty</small></button>
   <button class="pump" data-p="5">Pump 5<small>Natural / Home</small></button>
   <button class="pump" data-p="6">Pump 6<small>Evening</small></button>
+  <button class="pump" data-p="7">Pump 7<small>Wild #2</small></button>
+  <button class="pump" data-p="8">Pump 8<small>Office #2</small></button>
+  <button class="pump" data-p="9">Pump 9<small>Sweet #2</small></button>
+  <button class="pump" data-p="10">Pump 10<small>Sporty #2</small></button>
+  <button class="pump" data-p="11">Pump 11<small>Natural #2</small></button>
+  <button class="pump" data-p="12">Pump 12<small>Evening #2</small></button>
 </div>
 
 <div class="danger">
@@ -61,7 +69,10 @@ async function post(path, body){
 }
 const dur=()=>parseFloat(document.getElementById('dur').value||'0.5');
 document.querySelectorAll('.pump').forEach(b=>{
-  b.onclick=()=>post('/pump',{pump:Number(b.dataset.p),duration:dur()});
+  b.onclick=()=>{
+    if(b.disabled) return;
+    post('/pump',{pump:Number(b.dataset.p),duration:dur()});
+  };
 });
 document.getElementById('stop').onclick=()=>post('/stop');
 document.getElementById('reset').onclick=()=>post('/reset');
