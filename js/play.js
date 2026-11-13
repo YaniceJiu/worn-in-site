@@ -300,6 +300,7 @@ let garmentPromise=null;   // 后台生成服装纸艺拼贴图（gpt-image-1）
 let garmentReadyImg=null;  // 已就绪的衣服卡图片（用于打印）
 let printReady=false;      // 打印内容是否已备好
 let garmentErr='';         // 衣服卡生成失败原因（供屏幕显示）
+let addedNotes=[];         // 本次结果界面新增的精油（确认时用 7-12 泵补滴）
 
 function begin(p){ phase=p; }
 let last=performance.now(),raf=0;
@@ -455,6 +456,7 @@ async function waitAI(){
 }
 /* ---------- 电脑泵桥接：AI 风格 → 本机 pump_bridge.py → ESP32 泵 ---------- */
 const PUMP_MAP={wild:3,office:2,sweet:0,sporty:4,'natural/home':5,evening:6};   // sweet=0 暂时禁用；wild 改用泵3
+const MODIFIER_PUMP={'焚香':7,'岩兰草':10,'松针':10,'樱花':9,'白茶':8,'白麝香':8};  // 新增精油 → 7-12 备用泵
 const PUMP_URL='/pump'; // 同源：本机或局域网其它设备打开，都打到这台电脑的 server.py
 async function sendToPump(style, duration){
   const pump=PUMP_MAP[style];
@@ -465,6 +467,15 @@ async function sendToPump(style, duration){
     const j=await r.json();
     console.log('[pump]', j);
     if(j&&j.ok) toast('Sent to the machine: '+style+' → pump '+pump+' · '+d+'s');
+  }catch(e){ console.warn('[pump] 桥接未启动或串口未接:', e.message); }
+}
+async function sendPumpDirect(pumpNo, duration){
+  const d=Math.max(0.1, duration||1);
+  try{
+    const r=await fetch(PUMP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pump:pumpNo,duration:d})});
+    const j=await r.json();
+    console.log('[pump]', j);
+    if(j&&j.ok) toast('Sent to the machine: pump '+pumpNo+' · '+d+'s');
   }catch(e){ console.warn('[pump] 桥接未启动或串口未接:', e.message); }
 }
 async function runAI(){
@@ -676,7 +687,7 @@ function tintColors(){
   return [uniq[0],uniq[1],uniq[2]];
 }
 async function yarnFlow(){
-  sendToPump(AI && AI.style, 0.5);   // 液面升高：对应泵转 0.5s
+  sendToPump(AI && AI.style, 1.5);   // 液面升高：对应泵转 1.5s
   hint(null);
   const yarns=SEG[3].filter(l=>l.kind==='gif'&&l.id.startsWith('yarn'));
   if(!yarns.length){ await sleep(1200); return; }
@@ -739,7 +750,7 @@ async function yarnFlow(){
 /* ---------- 液面下降：付款后把三瓶液体倒放一遍（忽略毛球） ---------- */
 async function lowerLiquid(){
   await begin(P.YARN); hint(null); clearFX();
-  sendToPump(AI && AI.style, 2);   // 液面下降：对应泵转 2s
+  sendToPump(AI && AI.style, 3.5);   // 灌瓶：对应泵转 3.5s
   const yarns=SEG[3].filter(l=>l.kind==='gif'&&l.id.startsWith('yarn'));
   if(!yarns.length){ await sleep(800); return; }
   const g=META[yarns[0].gif]; if(!g){ await sleep(800); return; }
@@ -865,6 +876,8 @@ function toggleMod(b){
   b.dataset.plus=adding?'0':'1';
   b.textContent=adding?'−'+en:'＋'+en;
   b.classList.toggle('minus', b.dataset.plus==='0');
+  if(adding){ if(addedNotes.indexOf(L)<0) addedNotes.push(L); }
+  else { addedNotes=addedNotes.filter(x=>x!==L); }
   applyModifier(L, adding);
 }
 function applyModifier(note, add){
@@ -929,9 +942,17 @@ async function editPreview(){
    制香结果 → 取香卡 → 买下 → 付款 → 结果长条
    ============================================================ */
 function askSmellCard(){
-  bottom('<button id="smellCard">👃 Smell it · take a card</button>');
+  bottom('<button id="smellCard">👃 Confirm · smell again</button>');
   return new Promise(res=>{
-    $('smellCard').onclick=()=>res();
+    $('smellCard').onclick=async()=>{
+      // 新加的精油用 7-12 备用泵补滴 0.8 秒
+      for(const note of addedNotes){
+        const p=MODIFIER_PUMP[note];
+        if(p) await sendPumpDirect(p, 0.8);
+      }
+      addedNotes=[];
+      res();
+    };
   });
 }
 function askLikeIt(){
