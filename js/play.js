@@ -456,7 +456,7 @@ async function waitAI(){
 }
 /* ---------- 电脑泵桥接：AI 风格 → 本机 pump_bridge.py → ESP32 泵 ---------- */
 const PUMP_MAP={wild:3,office:2,sweet:0,sporty:4,'natural/home':5,evening:6};   // sweet=0 暂时禁用；wild 改用泵3
-const MODIFIER_PUMP={'焚香':7,'岩兰草':10,'松针':10,'樱花':9,'白茶':8,'白麝香':8};  // 新增精油 → 7-12 备用泵
+const MODIFIER_PUMP={'焚香':7,'白茶':8,'樱花':9,'岩兰草':10,'松针':11,'白麝香':12};  // 6 种新增精油 → 7-12 备用泵（一一对应）
 const PUMP_URL='/pump'; // 同源：本机或局域网其它设备打开，都打到这台电脑的 server.py
 async function sendToPump(style, duration){
   const pump=PUMP_MAP[style];
