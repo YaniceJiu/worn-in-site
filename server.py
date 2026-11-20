@@ -394,7 +394,7 @@ if __name__ == '__main__':
 
     ip = lan_ip()
     print('=== Worn-In 服务器（单进程 · 双端口 · 共享串口）===')
-    print('  电脑本机 / 测试台:  http://127.0.0.1:8904/pump-test.html')
+    print('  电脑本机 / 测试台:  http://127.0.0.1:8904/tests/pump-test.html')
     print('  iPad（局域网）:      https://%s:8443/play.html' % ip)
     print('  泵接口: POST /pump {"style":"..."} 或 {"pump":N,"duration":s}')
     print('  打印接口: POST /print → %s' % PRINTER_NAME)

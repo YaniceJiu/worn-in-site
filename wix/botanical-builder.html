@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>植物拼贴生成器 · Worn-In（JavaScript 版）</title>
+<style>
+  :root{color-scheme:dark;--bg:#181510;--panel:#211c16;--card:#29231c;--line:#42372a;--gold:#d8b274;--muted:#a89c8a;--text:#f2eadc}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;padding:24px}
+  .wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  h1{font-size:20px;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  canvas{display:block;width:100%;aspect-ratio:1;background:#f8f5ef;box-shadow:0 14px 50px #0008}
+  .row{display:flex;flex-wrap:wrap;gap:8px}
+  button{border:1px solid #584831;background:#30271d;color:#e5d4b5;border-radius:8px;padding:10px 14px;cursor:pointer;font-size:13px}
+  button:hover{border-color:var(--gold);background:#3a3023}
+  button.primary{background:#c9a565;color:#21190f;border-color:#c9a565;font-weight:700}
+  .info{padding:10px 12px;background:#282219;border:1px solid #393023;border-radius:9px;color:#b9ad9b;font-size:12px;line-height:1.6}
+  .info b{color:#e8d8ba}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>植物拼贴生成器</h1>
+    <div class="sub">随机配方 · 抽取 4 种香料 · 解重叠 + 环绕平衡 · 纯 JavaScript / Canvas</div>
+  </div>
+  <canvas id="canvas" width="1000" height="1000"></canvas>
+  <div class="row">
+    <button id="generate" class="primary">随机生成 1 张</button>
+    <button id="generateTwo">随机生成 2 张</button>
+    <button id="download">导出当前 PNG</button>
+  </div>
+  <div class="info" id="info">点击「随机生成」开始。</div>
+</div>
+
+<script>
+(() => {
+  const CANVAS = 1000, CENTER = 500, BOTTLE_SIZE = 270;
+  const ASSET = '../assets/botanicals/';
+
+  // ===== 配方（来自 js/copykit.js 的 RECIPES）=====
+  const RECIPES = {
+    'wild': {
+      'meadow': {top:['柑橘','小豆蔻'],mid:['藏红花','皮革'],base:['烟草木','乳香','琥珀']},
+      'biker': {top:['小豆蔻','柑橘'],mid:['皮革','焚香'],base:['琥珀','烟草木','乳香']},
+      'nightfall': {top:['柑橘','小豆蔻'],mid:['焚香','藏红花'],base:['乳香','琥珀','烟草木']}
+    },
+    'office': {
+      'meeting': {top:['白茶','佛手柑'],mid:['雪松','橡木苔'],base:['白麝香','香根草']},
+      'coffee': {top:['佛手柑','白茶'],mid:['天竺葵','雪松'],base:['白麝香','香根草']},
+      'weekend': {top:['白茶','佛手柑'],mid:['天竺葵','橡木苔'],base:['香根草','白麝香']}
+    },
+    'sweet': {
+      'candy': {top:['蜜桃','橙花','樱花'],mid:['棉花糖','栀子花'],base:['香草','白木']},
+      'fruity floral': {top:['樱花','橙花','蜜桃'],mid:['栀子花','棉花糖'],base:['白木','香草']},
+      'delicate': {top:['樱花','蜜桃'],mid:['栀子花','棉花糖'],base:['香草','白木']}
+    },
+    'sporty': {
+      'sea salt': {top:['薄荷','甜橙'],mid:['海水','依兰'],base:['岩兰草','松针']},
+      'forest': {top:['甜橙','薄荷'],mid:['依兰','海水'],base:['松针','肉豆蔻']},
+      'mint': {top:['薄荷','甜橙'],mid:['海水','依兰'],base:['岩兰草','松针']}
+    },
+    'natural/home': {
+      'after rain': {top:['竹叶','柑橘'],mid:['铃兰','白茶'],base:['苔藓','橡木']},
+      'warm wood': {top:['柑橘','竹叶'],mid:['白茶','松针'],base:['橡木','苔藓']},
+      'tea': {top:['竹叶','柑橘'],mid:['白茶','铃兰'],base:['橡木','苔藓']}
+    },
+    'evening': {
+      'rose': {top:['小苍兰','乌龙'],mid:['玫瑰净油','木兰'],base:['檀木','鸢尾根']},
+      'champagne': {top:['乌龙','小苍兰'],mid:['木兰','玫瑰净油'],base:['鸢尾根','檀木']},
+      'oriental': {top:['小苍兰','乌龙'],mid:['玫瑰净油','木兰'],base:['檀木','鸢尾根']}
+    }
+  };
+  const ALIASES = {'岩兰草':'香根草（岩兰草）','香根草':'香根草（岩兰草）'};
+
+  // ===== 手调位置库（来自 plant-layout.json）=====
+  const PLANTS = [
+    {id:'01',name:'柑橘',size:139,x:597,y:640,rotate:-27},
+    {id:'02',name:'小豆蔻',size:190,x:403,y:414,rotate:0},
+    {id:'03',name:'皮革',size:166,x:500,y:478,rotate:0},
+    {id:'04',name:'藏红花',size:146,x:586,y:640,rotate:-4},
+    {id:'05',name:'焚香',size:212,x:414,y:414,rotate:19},
+    {id:'06',name:'乳香',size:153,x:629,y:414,rotate:-12},
+    {id:'07',name:'琥珀',size:142,x:500,y:349,rotate:-4},
+    {id:'08',name:'烟草木',size:166,x:360,y:554,rotate:0},
+    {id:'09',name:'白茶',size:190,x:640,y:532,rotate:10},
+    {id:'10',name:'佛手柑',size:124,x:392,y:651,rotate:-43},
+    {id:'11',name:'橡木苔',size:166,x:629,y:382,rotate:85},
+    {id:'12',name:'雪松',size:184,x:489,y:661,rotate:-89},
+    {id:'13',name:'天竺葵',size:166,x:661,y:500,rotate:0},
+    {id:'14',name:'白麝香',size:303,x:511,y:489,rotate:0,hidden:true},
+    {id:'15',name:'香根草（岩兰草）',size:166,x:371,y:608,rotate:-43},
+    {id:'16',name:'樱花',size:252,x:360,y:468,rotate:0},
+    {id:'17',name:'蜜桃',size:98,x:651,y:565,rotate:0},
+    {id:'18',name:'橙花',size:166,x:629,y:371,rotate:-43},
+    {id:'19',name:'栀子花',size:166,x:446,y:317,rotate:0},
+    {id:'20',name:'棉花糖',size:166,x:543,y:328,rotate:0},
+    {id:'21',name:'香草',size:166,x:489,y:651,rotate:-97},
+    {id:'22',name:'白木',size:204,x:360,y:586,rotate:-23},
+    {id:'23',name:'甜橙',size:166,x:608,y:640,rotate:0},
+    {id:'24',name:'薄荷',size:166,x:661,y:468,rotate:-19},
+    {id:'25',name:'海水',size:146,x:371,y:403,rotate:19},
+    {id:'26',name:'依兰',size:166,x:382,y:618,rotate:-81},
+    {id:'27',name:'松针',size:166,x:661,y:446,rotate:0},
+    {id:'28',name:'肉豆蔻',size:106,x:382,y:629,rotate:0},
+    {id:'29',name:'竹叶',size:166,x:511,y:672,rotate:85},
+    {id:'30',name:'铃兰',size:211,x:371,y:457,rotate:-19},
+    {id:'31',name:'橡木',size:128,x:339,y:522,rotate:-58},
+    {id:'32',name:'苔藓',size:172,x:489,y:661,rotate:0},
+    {id:'33',name:'小苍兰',size:166,x:640,y:376.3,rotate:-31},
+    {id:'34',name:'乌龙',size:166,x:360,y:392,rotate:4},
+    {id:'35',name:'玫瑰净油',size:307,x:500,y:500,rotate:0,hidden:true},
+    {id:'36',name:'木兰',size:166,x:349,y:618,rotate:-23},
+    {id:'37',name:'檀木',size:166,x:500,y:651,rotate:-105},
+    {id:'38',name:'鸢尾根',size:186,x:392,y:597,rotate:0}
+  ];
+  const layoutMap = new Map(PLANTS.map(p => [p.name, p]));
+  const plantUrl = (p) => ASSET + 'plants/' + encodeURI(p.id + '_' + p.name + '.png');
+
+  // ===== 工具 =====
+  const wrap180 = (a) => { let v = ((a + 180) % 360 + 360) % 360 - 180; if (v <= -180) v += 360; return v; };
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const aabb = (w, h, rotate) => {
+    const t = rotate * Math.PI / 180, c = Math.abs(Math.cos(t)), s = Math.abs(Math.sin(t));
+    return [w * c + h * s, w * s + h * c];
+  };
+  const overlapRatio = (a, b) => {
+    const [aw, ah] = aabb(a.w, a.h, a.rotate);
+    const [bw, bh] = aabb(b.w, b.h, b.rotate);
+    const x1 = Math.max(a.x - aw / 2, b.x - bw / 2), y1 = Math.max(a.y - ah / 2, b.y - bh / 2);
+    const x2 = Math.min(a.x + aw / 2, b.x + bw / 2), y2 = Math.min(a.y + ah / 2, b.y + bh / 2);
+    const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    const union = aw * ah + bw * bh - inter;
+    return union > 0 ? inter / union : 0;
+  };
+  const worstPair = (arr) => {
+    let worst = null;
+    for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
+      const r = overlapRatio(arr[i], arr[j]);
+      if (!worst || r > worst.r) worst = { a: arr[i], b: arr[j], r };
+    }
+    return worst;
+  };
+
+  // ===== 解重叠（阶段一 60% 绕瓶转 180；阶段二 微调旋转 + 受限外推，目标 <5%）=====
+  function resolveOverlaps(arr) {
+    for (let k = 0; k < 100; k++) {
+      const w = worstPair(arr);
+      if (!w || w.r < 0.6) break;
+      const t = w.a.size >= w.b.size ? w.a : w.b;
+      t.x = CANVAS - t.x; t.y = CANVAS - t.y; t.rotate = wrap180(t.rotate + 180);
+    }
+    for (let k = 0; k < 400; k++) {
+      const w = worstPair(arr);
+      if (!w || w.r <= 0.05) break;
+      const t = w.a.size <= w.b.size ? w.a : w.b;
+      const o = t === w.a ? w.b : w.a;
+      for (let m = 0; m < 24; m++) {
+        const cur = overlapRatio(w.a, w.b);
+        if (cur <= 0.05) break;
+        let best = cur, br = t.rotate;
+        for (const d of [4, -4]) {
+          t.rotate = wrap180(t.rotate + d);
+          const tr = overlapRatio(w.a, w.b);
+          if (tr < best) { best = tr; br = t.rotate; }
+          t.rotate = wrap180(t.rotate - d);
+        }
+        if (best >= cur) break;
+        t.rotate = br;
+      }
+      if (overlapRatio(w.a, w.b) > 0.05) {
+        const dx = t.x - o.x, dy = t.y - o.y, dist = Math.hypot(dx, dy) || 1;
+        const sx = dx / dist * 6, sy = dy / dist * 6;
+        const baseR = t.base_radius != null ? t.base_radius : Math.hypot(t.x - CENTER, t.y - CENTER);
+        for (let m = 0; m < 16; m++) {
+          if (overlapRatio(w.a, w.b) <= 0.05) break;
+          const nx = clamp(t.x + sx, 40, CANVAS - 40), ny = clamp(t.y + sy, 40, CANVAS - 40);
+          if (Math.hypot(nx - CENTER, ny - CENTER) > baseR + 30) break;
+          t.x = nx; t.y = ny;
+        }
+      }
+    }
+    return arr;
+  }
+
+  // ===== 环绕度平衡（角度空洞法：把最挤处对环绕影响最小的一株搬到最大空洞中央）=====
+  function rebalance(arr) {
+    const angle = (it) => ((Math.atan2(it.y - CENTER, it.x - CENTER) * 180 / Math.PI) + 360) % 360;
+    for (let k = 0; k < arr.length; k++) {
+      const n = arr.length;
+      const angs = arr.map(it => ({ a: angle(it), it })).sort((p, q) => p.a - q.a);
+      const angles = angs.map(p => p.a);
+      const gaps = angles.map((a, i) => ((angles[(i + 1) % n] - a) + 360) % 360);
+      const gMax = Math.max(...gaps), gMin = Math.min(...gaps);
+      const iMax = gaps.indexOf(gMax), iMin = gaps.indexOf(gMin);
+      if (gMax <= (360 / n) * 1.35) break;
+      const empty = (angles[iMax] + gMax / 2) % 360;
+      const cands = [angs[iMin].it, angs[(iMin + 1) % n].it];
+      let bestItem = null, bestVar = Infinity;
+      for (const it of cands) {
+        const rest = angs.filter(p => p.it !== it).map(p => p.a);
+        const trial = [...rest, empty].sort((a, b) => a - b);
+        const tg = trial.map((a, i) => ((trial[(i + 1) % n] - a) + 360) % 360);
+        const mean = 360 / n;
+        const v = tg.reduce((s, g) => s + (g - mean) ** 2, 0) / n;
+        if (v < bestVar) { bestVar = v; bestItem = it; }
+      }
+      const oldX = bestItem.x, oldY = bestItem.y;
+      const r = Math.hypot(bestItem.x - CENTER, bestItem.y - CENTER);
+      bestItem.x = CENTER + r * Math.cos(empty * Math.PI / 180);
+      bestItem.y = CENTER + r * Math.sin(empty * Math.PI / 180);
+      const newAngs = arr.map(o => angle(o)).sort((a, b) => a - b);
+      const newGaps = newAngs.map((a, i) => ((newAngs[(i + 1) % n] - a) + 360) % 360);
+      if (Math.max(...newGaps) >= gMax - 0.5) { bestItem.x = oldX; bestItem.y = oldY; break; }
+      const others = arr.filter(o => o !== bestItem);
+      for (let m = 0; m < 24; m++) {
+        let worst = others.length ? Math.max(...others.map(o => overlapRatio(bestItem, o))) : 0;
+        if (worst <= 0.05) break;
+        let best = worst, br = bestItem.rotate;
+        for (const d of [4, -4]) {
+          bestItem.rotate = wrap180(bestItem.rotate + d);
+          const trial = others.length ? Math.max(...others.map(o => overlapRatio(bestItem, o))) : 0;
+          if (trial < best) { best = trial; br = bestItem.rotate; }
+          bestItem.rotate = wrap180(bestItem.rotate - d);
+        }
+        if (best >= worst) break;
+        bestItem.rotate = br;
+      }
+    }
+    return arr;
+  }
+
+  // ===== 图片加载 / 裁剪 =====
+  const imgCache = new Map();
+  function loadImage(src) {
+    if (imgCache.has(src)) return imgCache.get(src);
+    const p = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('加载失败: ' + src));
+      img.src = src;
+    });
+    imgCache.set(src, p);
+    return p;
+  }
+  async function loadCropped(p) {
+    const img = await loadImage(plantUrl(p));
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const off = document.createElement('canvas');
+    off.width = w; off.height = h;
+    const oc = off.getContext('2d', { willReadFrequently: true });
+    oc.drawImage(img, 0, 0);
+    const px = oc.getImageData(0, 0, w, h).data;
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (px[(y * w + x) * 4 + 3] > 24) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+    return { img, crop: { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } };
+  }
+  async function prepare(items) {
+    const out = [];
+    for (const it of items) {
+      const loaded = await loadCropped(it);
+      const s = it.size / Math.max(loaded.crop.w, loaded.crop.h);
+      out.push({
+        name: it.name, size: it.size, x: it.x, y: it.y, rotate: it.rotate,
+        w: loaded.crop.w * s, h: loaded.crop.h * s,
+        base_radius: Math.hypot(it.x - CENTER, it.y - CENTER),
+        img: loaded.img, crop: loaded.crop
+      });
+    }
+    return out;
+  }
+
+  // ===== 配方抽取 =====
+  function recipeIngredients(recipe) {
+    const pool = [];
+    for (const key of ['top', 'mid', 'base']) for (const n of recipe[key]) {
+      if (!pool.includes(n)) pool.push(n);
+    }
+    return pool;
+  }
+  function randomPick(arr, k) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a.slice(0, k);
+  }
+
+  // ===== 渲染 =====
+  async function compose(canvas, prepared) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = CANVAS; canvas.height = CANVAS;
+    const fabric = await loadImage(ASSET + 'fabric-vanilla.jpg');
+    ctx.drawImage(fabric, 0, 0, CANVAS, CANVAS);
+    const bottle = await loadImage(ASSET + 'perfume-bottle.png');
+    const bs = BOTTLE_SIZE / bottle.naturalWidth;
+    ctx.drawImage(bottle, CENTER - BOTTLE_SIZE / 2, CENTER - bottle.naturalHeight * bs / 2, BOTTLE_SIZE, bottle.naturalHeight * bs);
+    for (const it of prepared) {
+      const s = it.size / Math.max(it.crop.w, it.crop.h);
+      const w = it.crop.w * s, h = it.crop.h * s;
+      ctx.save();
+      ctx.translate(it.x, it.y);
+      ctx.rotate(it.rotate * Math.PI / 180);
+      ctx.drawImage(it.img, it.crop.x, it.crop.y, it.crop.w, it.crop.h, -w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+  }
+
+  // ===== 主流程 =====
+  const canvas = document.getElementById('canvas');
+  const info = document.getElementById('info');
+
+  async function generateOne() {
+    const styles = Object.keys(RECIPES);
+    const style = styles[Math.floor(Math.random() * styles.length)];
+    const variants = Object.keys(RECIPES[style]);
+    const variant = variants[Math.floor(Math.random() * variants.length)];
+    const recipe = RECIPES[style][variant];
+
+    const pool = recipeIngredients(recipe)
+      .map(n => ALIASES[n] || n)
+      .filter(n => layoutMap.has(n) && !layoutMap.get(n).hidden);
+    const pick = randomPick(pool, Math.min(4, pool.length));
+    const items = pick.map(n => layoutMap.get(n));
+
+    const prepared = await prepare(items);
+    rebalance(prepared);
+    resolveOverlaps(prepared);
+    await compose(canvas, prepared);
+
+    const w = worstPair(prepared);
+    info.innerHTML =
+      `<b>${style} / ${variant}</b> · 抽取 ${pick.length} 种：${pick.join('、')}<br>` +
+      `最大重叠：${w ? Math.round(w.r * 100) + '%' : '无'}`;
+    return prepared;
+  }
+
+  document.getElementById('generate').addEventListener('click', () => generateOne().catch(e => { info.textContent = '错误：' + e.message; }));
+  document.getElementById('generateTwo').addEventListener('click', async () => {
+    try { await generateOne(); await generateOne(); } catch (e) { info.textContent = '错误：' + e.message; }
+  });
+  document.getElementById('download').addEventListener('click', () => {
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = 'botanical-collage.png'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  });
+})();
+</script>
+</body>
+</html>

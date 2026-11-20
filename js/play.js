@@ -1353,15 +1353,22 @@ function showCam(){
       cd.classList.remove('hidden');
       for(let i=3;i>=1;i--){ num.textContent=i; restartRing(); await sleep(900); }
       cd.classList.add('hidden');
-      // iOS 已把画面转正（虽然 videoWidth/videoHeight 报横），直接镜像即可，不要旋转
+      // iPad 前摄返回横帧(1280x720)，必须逆时针转90°才能得到竖照片（相机app内部也做这件事）
       const vw=v.videoWidth||640, vh=v.videoHeight||480;
-      shot.width=vw; shot.height=vh;
-      const ctx2=shot.getContext('2d');
-      ctx2.setTransform(1,0,0,1,0,0);
-      ctx2.translate(vw,0);
-      ctx2.scale(-1,1);
-      ctx2.drawImage(v,0,0,vw,vh);
-      showDbg('cam '+vw+'x'+vh+' → shot '+shot.width+'x'+shot.height+' · mirrored');
+      const land = vw > vh;
+      let srcV=v, srcW=vw, srcH=vh;
+      if (land) {
+        const t=document.createElement('canvas');
+        t.width=vh; t.height=vw;
+        const tx=t.getContext('2d');
+        tx.translate(0, t.height);
+        tx.rotate(-Math.PI/2);
+        tx.drawImage(v, 0, 0);
+        srcV=t; srcW=vh; srcH=vw;
+      }
+      shot.width=srcW; shot.height=srcH;
+      shot.getContext('2d').drawImage(srcV,0,0,srcW,srcH);
+      showDbg('cam '+vw+'x'+vh+' → shot '+shot.width+'x'+shot.height+(land?' · rotated-90':''));
       await stopCam();
       v.classList.add('hidden'); shot.classList.remove('hidden'); doneBox.classList.remove('hidden');
       busy=false;
@@ -1375,13 +1382,8 @@ function showCam(){
 async function startCam(){
   const v=$('video');
   try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},audio:false});
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
     v.srcObject=camStream;
-    v.onloadedmetadata=()=>{
-      const land=v.videoWidth>v.videoHeight;
-      const cv=$('camView'); if(cv) cv.classList.toggle('cam-land',land);
-      console.log('[cam]', v.videoWidth+'x'+v.videoHeight, land?'landscape':'portrait');
-    };
     await v.play();
     return true;
   }catch(e){ console.warn('[cam]',e); return false; }

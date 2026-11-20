@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小卡排版编辑器 · Worn-In</title>
+<style>
+  @font-face{font-family:'Biro Script Plus';src:url('/assets/fonts/biroscriptplus.otf') format('opentype')}
+  :root{color-scheme:dark;--bg:#181510;--panel:#211c16;--card:#29231c;--line:#42372a;--gold:#d8b274;--muted:#a89c8a;--text:#f2eadc}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;height:100vh;overflow:hidden}
+  button,input,textarea,select{font:inherit}
+  .app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 340px}
+  .workspace{min-width:0;display:flex;flex-direction:column;padding:16px 20px 12px;gap:10px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  h1{font-size:19px;margin:0;font-weight:650}
+  .subtitle{color:var(--muted);font-size:12px}
+  .stage-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  canvas#stage{display:block;height:100%;max-width:100%;aspect-ratio:2/3;box-shadow:0 16px 60px #0009;touch-action:none}
+  .stage-foot{display:flex;gap:10px;color:#8f8475;font-size:11px;align-items:center;flex-wrap:wrap}
+  .stage-foot input[type=file]{width:170px}
+  .panel{background:var(--panel);border-left:1px solid #342b21;padding:16px 14px;display:flex;flex-direction:column;gap:13px;overflow-y:auto}
+  .panel h2{font-size:13px;margin:0;font-weight:650;color:#d8b274}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px 4px;cursor:pointer}
+  .seg button.on{border-color:var(--gold);background:#4a3f30;font-weight:650}
+  .field{display:flex;align-items:center;gap:8px}
+  .field label{color:var(--muted);font-size:11px;min-width:50px}
+  .field input[type=number]{width:70px}
+  .field input[type=color]{width:38px;height:28px;padding:0;border:0;background:none;cursor:pointer}
+  .field input[type=text],.field textarea{flex:1;min-width:0}
+  input,textarea{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 8px}
+  textarea{resize:vertical;min-height:80px;line-height:1.5}
+  button{cursor:pointer}
+  button.primary{background:#c9a05c;color:#231a10;font-weight:700;border:0;border-radius:8px;padding:9px 14px}
+  button.ghost{background:#3a332b;border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--text)}
+  .hint{color:#8f8475;font-size:11px;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="workspace">
+    <div class="topbar">
+      <div>
+        <h1>小卡排版编辑器</h1>
+        <div class="subtitle">拖拽移动 · 拖右下角圆点缩放 · 右侧面板精调 · 画布 2:3 (1000×1500)</div>
+      </div>
+      <button class="primary" id="exportBtn">导出 PNG</button>
+    </div>
+    <div class="stage-wrap"><canvas id="stage"></canvas></div>
+    <div class="stage-foot">
+      <span>衣服贴纸：</span>
+      <input type="file" id="file" accept="image/png,image/webp">
+      <button class="ghost" id="loadDefault">载入默认</button>
+      <span id="imgState" style="color:#8eaa7a">未载入</span>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>选中部件</h2>
+    <div class="seg" id="seg">
+      <button data-k="garment">衣服</button>
+      <button data-k="title" class="on">标题</button>
+      <button data-k="notes">香料文字</button>
+    </div>
+    <div id="props"></div>
+    <h2>背景色</h2>
+    <div class="field">
+      <input type="color" id="bgColor" value="#fae8ca">
+      <input type="text" id="bgHex" value="#fae8ca" style="width:80px">
+    </div>
+    <div class="hint">提示：点画布上的部件即可选中；在部件上按住拖动改位置；右下角圆点按住拖动改大小（文字=字号，衣服=尺寸）。</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const CW=1000, CH=1500;
+  const cv=document.getElementById('stage');
+  const ctx=cv.getContext('2d');
+  cv.width=CW; cv.height=CH;
+
+  const S={
+    bg:'#fae8ca',
+    garment:{img:null, x:100, y:60, w:800, h:1200},
+    title:{text:'Worn-In', x:CW/2, y:1270, size:110, color:'#5c4834'},
+    notes:{text:'freesia · oolong · rose absolute · magnolia\nsandalwood · orris root', x:CW/2, y:1400, size:44, color:'#5c4834', gap:62},
+  };
+  let sel='title';
+
+  function font(size){ return size+'px "Biro Script Plus", cursive'; }
+
+  function textBox(k){
+    if(k==='title'){
+      ctx.font=font(S.title.size); ctx.textAlign='center'; ctx.textBaseline='middle';
+      const m=ctx.measureText(S.title.text).width;
+      return {x:S.title.x-m/2, y:S.title.y-S.title.size/2, w:m, h:S.title.size};
+    }
+    if(k==='notes'){
+      ctx.font=font(S.notes.size); ctx.textAlign='center'; ctx.textBaseline='middle';
+      const lines=S.notes.text.split('\n');
+      let w=0; lines.forEach(l=>{w=Math.max(w,ctx.measureText(l).width);});
+      const totalH=(lines.length-1)*S.notes.gap;
+      return {x:S.notes.x-w/2, y:S.notes.y-totalH/2-S.notes.size/2, w, h:totalH+S.notes.size};
+    }
+    const g=S.garment;
+    return {x:g.x, y:g.y, w:g.w, h:g.h};
+  }
+
+  function drawTo(c){
+    c.clearRect(0,0,CW,CH);
+    c.fillStyle=S.bg; c.fillRect(0,0,CW,CH);
+    const g=S.garment;
+    if(g.img){ c.drawImage(g.img, g.x, g.y, g.w, g.h); }
+    else{
+      c.strokeStyle='#b8a78f'; c.lineWidth=2; c.setLineDash([8,6]);
+      c.strokeRect(g.x, g.y, g.w, g.h);
+      c.setLineDash([]);
+      c.fillStyle='#b8a78f'; c.textAlign='center'; c.textBaseline='middle'; c.font='28px sans-serif';
+      c.fillText('衣服贴纸（载入 PNG）', g.x+g.w/2, g.y+g.h/2);
+    }
+    c.textAlign='center'; c.textBaseline='middle';
+    c.fillStyle=S.title.color; c.font=font(S.title.size);
+    c.fillText(S.title.text, S.title.x, S.title.y);
+    const lines=S.notes.text.split('\n');
+    const totalH=(lines.length-1)*S.notes.gap;
+    c.fillStyle=S.notes.color; c.font=font(S.notes.size);
+    lines.forEach((ln,i)=>{ c.fillText(ln, S.notes.x, S.notes.y - totalH/2 + i*S.notes.gap); });
+  }
+
+  function draw(){
+    drawTo(ctx);
+    // 选中框 + 把手
+    const b=textBox(sel);
+    ctx.strokeStyle='#4da3ff'; ctx.lineWidth=2; ctx.setLineDash([6,5]);
+    ctx.strokeRect(b.x-6, b.y-6, b.w+12, b.h+12);
+    ctx.setLineDash([]);
+    ctx.fillStyle='#4da3ff';
+    ctx.beginPath(); ctx.arc(b.x+b.w+6, b.y+b.h+6, 8, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(b.x+b.w+6, b.y+b.h+6, 3.5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // 画布坐标换算
+  function toCanvas(e){
+    const r=cv.getBoundingClientRect();
+    return {x:(e.clientX-r.left)*CW/r.width, y:(e.clientY-r.top)*CH/r.height};
+  }
+  function hit(k, p){
+    const b=textBox(k); const pad=6;
+    if(p.x>=b.x-pad && p.x<=b.x+b.w+pad && p.y>=b.y-pad && p.y<=b.y+b.h+pad) return true;
+    return false;
+  }
+  function onHandle(k, p){
+    const b=textBox(k);
+    const hx=b.x+b.w+6, hy=b.y+b.h+6;
+    return Math.hypot(p.x-hx, p.y-hy) <= 16;
+  }
+
+  let drag=null;
+  cv.addEventListener('pointerdown', e=>{
+    const p=toCanvas(e);
+    const order=['notes','title','garment'];
+    for(const k of order){
+      if(onHandle(k,p)){ sel=k; drag={mode:'resize', k, sx:p.x, sy:p.y, ...snapshot(k)}; buildProps(); draw(); cv.setPointerCapture(e.pointerId); return; }
+    }
+    for(const k of order){
+      if(hit(k,p)){ sel=k; drag={mode:'move', k, sx:p.x, sy:p.y, ...snapshot(k)}; buildProps(); draw(); cv.setPointerCapture(e.pointerId); return; }
+    }
+    // 点空白：取消选中
+    drag=null; sel=null; buildProps(); draw();
+  });
+  cv.addEventListener('pointermove', e=>{
+    if(!drag) return;
+    const p=toCanvas(e);
+    const dx=p.x-drag.sx, dy=p.y-drag.sy;
+    if(drag.mode==='move'){
+      if(drag.k==='garment'){ S.garment.x=clamp(drag.x+dx, -S.garment.w+40, CW-40); S.garment.y=clamp(drag.y+dy, -S.garment.h+40, CH-40); }
+      else { const o=S[drag.k]; o.x=clamp(drag.x+dx, 40, CW-40); o.y=clamp(drag.y+dy, 40, CH-40); }
+    }else{
+      if(drag.k==='garment'){
+        let w=clamp(drag.w+dx, 80, CW*1.4);
+        S.garment.w=w;
+        if(drag.img){ S.garment.h=w*(drag.img.naturalHeight/drag.img.naturalWidth); }
+        else { S.garment.h=drag.h+dy; }
+      }else{
+        const o=S[drag.k];
+        o.size=Math.round(clamp(drag.size+dx, 16, 300));
+      }
+    }
+    draw();
+  });
+  cv.addEventListener('pointerup', e=>{ drag=null; });
+  cv.addEventListener('pointercancel', e=>{ drag=null; });
+
+  function snapshot(k){
+    if(k==='garment') return {x:S.garment.x, y:S.garment.y, w:S.garment.w, h:S.garment.h, img:S.garment.img};
+    if(k==='title') return {x:S.title.x, y:S.title.y, size:S.title.size};
+    return {x:S.notes.x, y:S.notes.y, size:S.notes.size};
+  }
+  function clamp(v,a,b){ return Math.min(b, Math.max(a, v)); }
+
+  // 面板
+  const propsEl=document.getElementById('props');
+  function buildProps(){
+    propsEl.innerHTML='';
+    if(!sel){ propsEl.innerHTML='<div class="hint">未选中任何部件</div>'; return; }
+    const add=(label, val, oninput, type)=> {
+      const d=document.createElement('div'); d.className='field';
+      d.innerHTML='<label>'+label+'</label>';
+      const inp=document.createElement('input'); inp.type=type||'number'; inp.value=val;
+      if(type==='number') inp.step=1;
+      inp.oninput=oninput;
+      d.appendChild(inp); propsEl.appendChild(d);
+      return inp;
+    };
+    if(sel==='garment'){
+      const g=S.garment;
+      add('X', Math.round(g.x), e=>{ g.x=+e.target.value; draw(); });
+      add('Y', Math.round(g.y), e=>{ g.y=+e.target.value; draw(); });
+      add('宽度', Math.round(g.w), e=>{ g.w=+e.target.value; if(g.img) g.h=g.w*(g.img.naturalHeight/g.img.naturalWidth); draw(); });
+      add('高度', Math.round(g.h), e=>{ g.h=+e.target.value; draw(); });
+    }else if(sel==='title'){
+      const o=S.title;
+      add('X', Math.round(o.x), e=>{ o.x=+e.target.value; draw(); });
+      add('Y', Math.round(o.y), e=>{ o.y=+e.target.value; draw(); });
+      add('字号', Math.round(o.size), e=>{ o.size=+e.target.value; draw(); });
+      const t=add('文字', o.text, e=>{ o.text=e.target.value; draw(); }, 'text');
+      t.style.width='100%';
+      const c=document.createElement('div'); c.className='field';
+      c.innerHTML='<label>颜色</label>';
+      const ci=document.createElement('input'); ci.type='color'; ci.value=o.color;
+      ci.oninput=e=>{ o.color=e.target.value; draw(); };
+      c.appendChild(ci); propsEl.appendChild(c);
+    }else if(sel==='notes'){
+      const o=S.notes;
+      add('X', Math.round(o.x), e=>{ o.x=+e.target.value; draw(); });
+      add('Y', Math.round(o.y), e=>{ o.y=+e.target.value; draw(); });
+      add('字号', Math.round(o.size), e=>{ o.size=+e.target.value; draw(); });
+      add('行距', Math.round(o.gap), e=>{ o.gap=+e.target.value; draw(); });
+      const d=document.createElement('div'); d.className='field';
+      d.innerHTML='<label>文字</label>';
+      const ta=document.createElement('textarea'); ta.value=o.text;
+      ta.oninput=e=>{ o.text=e.target.value; draw(); };
+      d.appendChild(ta); propsEl.appendChild(d);
+      const c=document.createElement('div'); c.className='field';
+      c.innerHTML='<label>颜色</label>';
+      const ci=document.createElement('input'); ci.type='color'; ci.value=o.color;
+      ci.oninput=e=>{ o.color=e.target.value; draw(); };
+      c.appendChild(ci); propsEl.appendChild(c);
+    }
+  }
+
+  document.getElementById('seg').querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{
+      sel=b.dataset.k;
+      document.getElementById('seg').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+      buildProps(); draw();
+    };
+  });
+
+  // 背景色
+  document.getElementById('bgColor').oninput=e=>{ S.bg=e.target.value; document.getElementById('bgHex').value=S.bg; draw(); };
+  document.getElementById('bgHex').oninput=e=>{ const v=e.target.value; if(/^#[0-9a-fA-F]{6}$/.test(v)){ S.bg=v; document.getElementById('bgColor').value=v; draw(); } };
+
+  // 导出
+  document.getElementById('exportBtn').onclick=()=>{
+    const out=document.createElement('canvas'); out.width=CW; out.height=CH;
+    drawTo(out.getContext('2d'));
+    const a=document.createElement('a'); a.download='recipe_card_edited.png'; a.href=out.toDataURL('image/png'); a.click();
+  };
+
+  // 衣服贴纸载入
+  const imgState=document.getElementById('imgState');
+  function setGarment(im){
+    const g=S.garment; g.img=im;
+    const ar=im.naturalHeight/im.naturalWidth || 1.5;
+    g.w=Math.min(860, CW*0.88);
+    g.h=g.w*ar;
+    g.x=(CW-g.w)/2; g.y=30;
+    if(g.h>1100){ g.h=1100; g.w=g.h/ar; g.x=(CW-g.w)/2; }
+    imgState.textContent=im.naturalWidth+'×'+im.naturalHeight+' 已载入';
+    draw();
+  }
+  document.getElementById('file').onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const im=new Image(); im.onload=()=>setGarment(im); im.src=URL.createObjectURL(f);
+  };
+  document.getElementById('loadDefault').onclick=loadDefault;
+  function loadDefault(){
+    const im=new Image();
+    im.onload=()=>setGarment(im);
+    im.onerror=()=>{ imgState.textContent='默认贴纸不存在（先运行 tools/garment_to_collage.py）'; imgState.style.color='#d08a6a'; };
+    im.src='/assets/garment-sticker.png?t='+Date.now();
+  }
+
+  // 启动
+  async function boot(){
+    try{ await document.fonts.load('100px "Biro Script Plus"'); }catch(e){}
+    buildProps();
+    draw();
+    loadDefault();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

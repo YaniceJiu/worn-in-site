@@ -4,9 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Worn-In · Old Clothes, New Scent</title>
-<link rel="stylesheet" href="play.css?v=27">
+<link rel="stylesheet" href="play.css?v=34">
 </head>
 <body>
+<!-- 运营入口：iPad 上打开泵控制台（小齿轮，不干扰体验） -->
+<a id="pumpLink" href="tests/pump-test.html" title="Pump Console"
+   style="position:fixed;right:12px;bottom:12px;z-index:9999;width:44px;height:44px;border-radius:50%;
+          background:rgba(0,0,0,.45);color:#e6c383;display:flex;align-items:center;justify-content:center;
+          font-size:22px;text-decoration:none;backdrop-filter:blur(3px)">⚙</a>
 <!-- 猫眼入口门：点击猫眼后网站才开始 -->
 <div id="catGate">
   <canvas id="catCv"></canvas>
@@ -83,6 +88,6 @@
 <script src="assets/vendor/qrcode.min.js"></script>
 <script src="js/copykit.js?v=5"></script>
 <script type="module" src="js/catgate.js?v=5"></script>
-  <script src="js/play.js?v=100"></script>
+  <script src="js/play.js?v=105"></script>
 </body>
 </html>

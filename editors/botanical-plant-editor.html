@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>植物逐株手调 · Worn-In 拼贴</title>
+<style>
+  :root{color-scheme:dark;--bg:#181510;--panel:#211c16;--card:#29231c;--line:#42372a;--gold:#d8b274;--muted:#a89c8a;--text:#f2eadc;--ok:#8eaa7a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;height:100vh;overflow:hidden}
+  button,input{font:inherit}
+  .app{height:100%;display:grid;grid-template-rows:minmax(0,1fr) 330px}
+  .workspace{min-width:0;min-height:0;display:flex;flex-direction:column;padding:16px 22px 10px;gap:8px}
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  h1{font-size:19px;margin:0 0 2px;font-weight:650;letter-spacing:.02em}
+  .subtitle{color:var(--muted);font-size:12px}
+  .hint{color:#8f8475;font-size:11px}
+  .stage-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  canvas{display:block;height:100%;max-width:100%;aspect-ratio:1;background:#f8f5ef;box-shadow:0 14px 50px #0008;touch-action:none;cursor:grab}
+  canvas.dragging{cursor:grabbing}
+  .stage-foot{display:flex;justify-content:space-between;gap:12px;color:#8f8475;font-size:11px}
+  .panel{background:var(--panel);border-top:1px solid #342b21;display:flex;flex-direction:row;align-items:stretch;overflow:hidden}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px}
+  .panel-head h2{font-size:15px;margin:0;font-weight:650}
+  .save-state{font-size:10px;color:var(--ok)}
+  .lib{width:320px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid #342b21;min-height:0}
+  .lib-title{display:flex;justify-content:space-between;align-items:center;padding:0 12px 6px;color:#c5b9a7;font-size:11px}
+  .lib-grid{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:0 12px 10px;align-content:start}
+  .lib-cell{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:4px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .lib-cell:hover{border-color:var(--gold)}
+  .lib-cell.on{border-color:#b9955d;box-shadow:0 0 0 1px #b9955d44}
+  .lib-cell img{width:40px;height:40px;object-fit:contain;pointer-events:none}
+  .lib-cell span{font-size:9px;color:var(--muted);line-height:1.1;text-align:center;pointer-events:none}
+  .board{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:10px 12px}
+  .board-title{color:#c5b9a7;font-size:11px;margin-bottom:6px}
+  #boardList{flex:1;min-height:0;display:flex;flex-direction:row;gap:8px;overflow-x:auto;overflow-y:hidden;align-items:flex-start;padding-bottom:4px}
+  .plant-card{width:252px;flex-shrink:0;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 10px 10px}
+  .plant-card.active{border-color:#b9955d;box-shadow:0 0 0 1px #b9955d33}
+  .plant-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .eye{border:1px solid #514332;background:none;color:var(--muted);border-radius:6px;width:30px;height:26px;cursor:pointer;font-size:13px;line-height:1}
+  .eye.off{color:#5f5547;text-decoration:line-through}
+  .name-btn{border:0;background:none;color:var(--text);padding:0;text-align:left;cursor:pointer;font-weight:650;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .del{border:0;background:none;color:#7d7060;cursor:pointer;font-size:14px;width:24px}
+  .del:hover{color:#c96}
+  .control{display:grid;grid-template-columns:34px minmax(0,1fr) 58px;gap:6px;align-items:center;margin-top:4px}
+  .control label{font-size:10px;color:#c5b9a7}
+  input[type=range]{width:100%;accent-color:var(--gold);height:16px}
+  input[type=number]{width:58px;background:#17130f;color:var(--text);border:1px solid #514332;border-radius:6px;padding:3px 4px;text-align:right;font-size:11px}
+  .delta{font-size:9px;color:#91836f;text-align:right;margin-top:1px}
+  .actions{width:176px;flex-shrink:0;border-left:1px solid #342b21;display:flex;flex-direction:column;gap:7px;padding:12px}
+  .actions button,.file-button{border:1px solid #584831;background:#30271d;color:#e5d4b5;border-radius:8px;padding:8px 9px;cursor:pointer;font-size:11px}
+  .actions button:hover,.file-button:hover{border-color:var(--gold);background:#3a3023}
+  .actions .primary{background:#c9a565;color:#21190f;border-color:#c9a565;font-weight:700}
+  .file-button{display:block;text-align:center}
+  #loadFile{display:none}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#332a20;border:1px solid #695536;color:#f0dfc0;border-radius:8px;padding:8px 13px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+  .toast.show{opacity:1}
+  @media(max-width:640px){
+    .app{grid-template-rows:minmax(0,1fr) 280px}
+    .workspace{padding:12px}
+    .lib{width:150px}
+    .lib-grid{grid-template-columns:repeat(2,1fr)}
+    .actions{width:150px;padding:10px}
+    .plant-card{width:216px}
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="workspace">
+    <header class="topbar">
+      <div>
+        <h1>植物逐株手调</h1>
+        <div class="subtitle">点击右侧植物加入版面 · 拖拽或滑块调整大小 / 位置 / 旋转</div>
+      </div>
+      <span class="hint" id="coordHint">x:— y:—</span>
+    </header>
+    <div class="stage-wrap"><canvas id="canvas" width="1000" height="1000" aria-label="植物拼贴手调画布"></canvas></div>
+    <footer class="stage-foot">
+      <span>拖动选中植物 = 改位置；↑↓←→ 微调 1px，Shift+方向键 10px</span>
+      <span>每株数据单独保存在本机浏览器</span>
+    </footer>
+  </section>
+  <aside class="panel">
+    <div class="lib">
+      <div class="panel-head"><h2>植物库</h2><span class="save-state" id="saveState">已自动保存</span></div>
+      <div class="lib-title"><span>点击加入 / 选中</span><span id="libCount">0/38</span></div>
+      <div class="lib-grid" id="libGrid"></div>
+    </div>
+    <div class="board">
+      <div class="board-title" id="boardTitle">已上版（0 株）</div>
+      <div id="boardList"></div>
+    </div>
+    <div class="actions">
+      <button id="downloadPng" class="primary">导出拼贴 PNG</button>
+      <button id="copyData">复制 JSON</button>
+      <button id="downloadData">下载 JSON</button>
+      <label class="file-button" for="loadFile">载入 JSON</label>
+      <input id="loadFile" type="file" accept="application/json,.json">
+      <button id="clear">清空版面</button>
+    </div>
+  </aside>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const CANVAS = 1000, CENTER = 500, BOTTLE_SIZE = 270;
+  const STORE_PREFIX = 'wornin-plant-data-';
+  const DEFAULT_SIZE = 166;
+  const PLANTS = [
+    ['01','柑橘'],['02','小豆蔻'],['03','皮革'],['04','藏红花'],['05','焚香'],['06','乳香'],
+    ['07','琥珀'],['08','烟草木'],['09','白茶'],['10','佛手柑'],['11','橡木苔'],['12','雪松'],
+    ['13','天竺葵'],['14','白麝香'],['15','香根草（岩兰草）'],['16','樱花'],['17','蜜桃'],['18','橙花'],
+    ['19','栀子花'],['20','棉花糖'],['21','香草'],['22','白木'],['23','甜橙'],['24','薄荷'],
+    ['25','海水'],['26','依兰'],['27','松针'],['28','肉豆蔻'],['29','竹叶'],['30','铃兰'],
+    ['31','橡木'],['32','苔藓'],['33','小苍兰'],['34','乌龙'],['35','玫瑰净油'],['36','木兰'],
+    ['37','檀木'],['38','鸢尾根'],
+  ].map(([id, name]) => ({ id, name, file: '../assets/botanicals/plants/' + id + '_' + name + '.png' }));
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const bottle = new Image();
+  const images = new Map();   // id -> {img, crop}
+  const data = new Map();     // id -> {size,x,y,rotate,visible}
+  let selectedId = '';
+  let dragging = false, toastTimer;
+
+  const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
+  const round = (v) => Math.round(v * 10) / 10;
+
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 1700);
+  }
+
+  // ---- data (each plant stored under its own localStorage key) ----
+  function loadPlant(id) {
+    try {
+      const raw = localStorage.getItem(STORE_PREFIX + id);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { console.error(e); }
+    return null;
+  }
+  function savePlant(id) {
+    const d = data.get(id);
+    if (!d) return;
+    try {
+      localStorage.setItem(STORE_PREFIX + id, JSON.stringify(d));
+      document.getElementById('saveState').textContent = '已自动保存';
+    } catch (e) {
+      document.getElementById('saveState').textContent = '无法保存';
+      console.error(e);
+    }
+  }
+
+  function restoreOrInit() {
+    let restored = 0;
+    for (const p of PLANTS) {
+      const saved = loadPlant(p.id);
+      if (saved && Number.isFinite(saved.size)) {
+        data.set(p.id, {
+          size: clamp(saved.size, 60, 400),
+          x: clamp(saved.x, 0, CANVAS),
+          y: clamp(saved.y, 0, CANVAS),
+          rotate: clamp(saved.rotate, -180, 180),
+          visible: !!saved.visible,
+          hidden: !!saved.hidden,
+        });
+        restored++;
+      } else {
+        data.set(p.id, { size: DEFAULT_SIZE, x: CENTER, y: CENTER, rotate: 0, visible: false, hidden: false });
+      }
+    }
+    // First run: seed the board with a 5-plant ring so there is something to tune.
+    if (restored === 0) {
+      const seed = [['29',0,180],['01',72,180],['30',144,208],['09',216,190],['32',288,174]];
+      for (const [id, bearing, radius] of seed) {
+        const d = data.get(id);
+        d.visible = true;
+        d.x = CENTER + radius * Math.sin(bearing * Math.PI / 180);
+        d.y = CENTER - radius * Math.cos(bearing * Math.PI / 180);
+        savePlant(id);
+      }
+    }
+  }
+
+  // ---- images ----
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const off = document.createElement('canvas');
+        off.width = img.naturalWidth; off.height = img.naturalHeight;
+        const oc = off.getContext('2d', { willReadFrequently: true });
+        oc.drawImage(img, 0, 0);
+        const px = oc.getImageData(0, 0, off.width, off.height).data;
+        let minX = off.width, minY = off.height, maxX = -1, maxY = -1;
+        for (let y = 0; y < off.height; y++) for (let x = 0; x < off.width; x++) {
+          if (px[(y * off.width + x) * 4 + 3] > 24) {
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
+          }
+        }
+        if (maxX < minX) { reject(new Error('图片无内容:' + src)); return; }
+        resolve({ img, crop: { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } });
+      };
+      img.onerror = () => reject(new Error('加载失败:' + src));
+      img.src = encodeURI(src);
+    });
+  }
+
+  async function loadAll() {
+    document.getElementById('saveState').textContent = '载入图片…';
+    try {
+      const entries = await Promise.all(PLANTS.map(async (p) => [p.id, await loadImage(p.file)]));
+      for (const [id, v] of entries) images.set(id, v);
+      await new Promise((res, rej) => {
+        bottle.onload = res; bottle.onerror = () => rej(new Error('瓶子图加载失败'));
+        bottle.src = '../assets/botanicals/perfume-bottle.png';
+      });
+      document.getElementById('saveState').textContent = '已自动保存';
+      render(); syncAll();
+    } catch (e) { showToast(e.message); console.error(e); }
+  }
+
+  // ---- geometry ----
+  function dims(id) {
+    const loaded = images.get(id), d = data.get(id);
+    if (!loaded || !d) return null;
+    const s = d.size / Math.max(loaded.crop.w, loaded.crop.h);
+    return { w: loaded.crop.w * s, h: loaded.crop.h * s, s };
+  }
+
+  // ---- render ----
+  function drawPlant(id) {
+    const loaded = images.get(id), d = data.get(id);
+    if (!loaded || !d || !d.visible || d.hidden) return;
+    const m = dims(id);
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rotate * Math.PI / 180);
+    ctx.drawImage(loaded.img, loaded.crop.x, loaded.crop.y, loaded.crop.w, loaded.crop.h,
+      -m.w / 2, -m.h / 2, m.w, m.h);
+    if (id === selectedId) {
+      ctx.strokeStyle = '#b58d50'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
+      ctx.strokeRect(-m.w / 2 - 5, -m.h / 2 - 5, m.w + 10, m.h + 10);
+    }
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, CANVAS, CANVAS);
+    ctx.fillStyle = '#f8f5ef'; ctx.fillRect(0, 0, CANVAS, CANVAS);
+    for (const id of data.keys()) drawPlant(id);
+    if (bottle.complete && bottle.naturalWidth) {
+      const s = BOTTLE_SIZE / bottle.naturalWidth;
+      const w = bottle.naturalWidth * s, h = bottle.naturalHeight * s;
+      ctx.drawImage(bottle, CENTER - w / 2, CENTER - h / 2, w, h);
+    }
+  }
+
+  function visiblePlants() { return [...data.entries()].filter(([, d]) => d.visible).map(([id]) => id); }
+
+  // ---- hit test ----
+  function canvasPoint(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * CANVAS / r.width, y: (e.clientY - r.top) * CANVAS / r.height };
+  }
+  function hitTest(pt) {
+    for (const id of [...visiblePlants()].reverse()) {
+      const d = data.get(id), m = dims(id); if (!m) continue;
+      const dx = pt.x - d.x, dy = pt.y - d.y, rad = -d.rotate * Math.PI / 180;
+      const lx = dx * Math.cos(rad) - dy * Math.sin(rad), ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+      if (Math.abs(lx) <= m.w / 2 + 8 && Math.abs(ly) <= m.h / 2 + 8) return id;
+    }
+    return null;
+  }
+
+  // ---- selection ----
+  function select(id) {
+    selectedId = id;
+    render(); syncAll();
+  }
+
+  // ---- UI ----
+  function makeLib() {
+    const grid = document.getElementById('libGrid');
+    grid.innerHTML = '';
+    for (const p of PLANTS) {
+      const cell = document.createElement('button');
+      cell.type = 'button'; cell.className = 'lib-cell'; cell.dataset.id = p.id;
+      const img = document.createElement('img');
+      img.src = encodeURI(p.file); img.alt = p.name;
+      const label = document.createElement('span'); label.textContent = p.name;
+      cell.append(img, label);
+      cell.addEventListener('click', () => {
+        const d = data.get(p.id);
+        if (!d.visible) {
+          d.visible = true;
+          d.hidden = false;
+          // 首次加入才随机放置；曾保存过的植物恢复之前调好的位置/大小/旋转
+          const hadData = !!localStorage.getItem(STORE_PREFIX + p.id);
+          if (!hadData) {
+            const ang = Math.random() * Math.PI * 2;
+            const rad = 240 + Math.random() * 60;
+            d.x = clamp(CENTER + rad * Math.sin(ang), 40, CANVAS - 40);
+            d.y = clamp(CENTER - rad * Math.cos(ang), 40, CANVAS - 40);
+          }
+          savePlant(p.id);
+          makeBoard();
+        } else if (d.hidden) {
+          d.hidden = false; savePlant(p.id); syncBoard();
+        }
+        select(p.id); render();
+      });
+      grid.appendChild(cell);
+    }
+  }
+
+  function makeBoard() {
+    const list = document.getElementById('boardList');
+    list.innerHTML = '';
+    for (const id of visiblePlants()) {
+      const p = PLANTS.find((q) => q.id === id);
+      const d = data.get(id);
+      const card = document.createElement('section');
+      card.className = 'plant-card'; card.dataset.id = id;
+      card.innerHTML = `
+        <div class="plant-head">
+          <button type="button" class="eye" data-act="eye" title="显示/隐藏">👁</button>
+          <button type="button" class="name-btn" data-act="select">${id} · ${p.name}</button>
+          <button type="button" class="del" data-act="del" title="移出版面">✕</button>
+        </div>
+        <div class="control"><label>大小</label>
+          <input data-k="size" type="range" min="60" max="400" step="1">
+          <input data-k="size" type="number" min="60" max="400" step="1"></div>
+        <div class="control"><label>X</label>
+          <input data-k="x" type="range" min="0" max="1000" step="1">
+          <input data-k="x" type="number" min="0" max="1000" step="1"></div>
+        <div class="control"><label>Y</label>
+          <input data-k="y" type="range" min="0" max="1000" step="1">
+          <input data-k="y" type="number" min="0" max="1000" step="1"></div>
+        <div class="control"><label>旋转</label>
+          <input data-k="rotate" type="range" min="-180" max="180" step="1">
+          <input data-k="rotate" type="number" min="-180" max="180" step="1"></div>
+        <div class="delta">中心 (${Math.round(d.x)}, ${Math.round(d.y)}) · 尺寸 ${Math.round(d.size)}</div>`;
+      list.appendChild(card);
+
+      card.querySelector('[data-act="select"]').addEventListener('click', () => select(id));
+      card.querySelector('[data-act="eye"]').addEventListener('click', () => {
+        d.hidden = !d.hidden; savePlant(id); syncBoard(); render();
+      });
+      card.querySelector('[data-act="del"]').addEventListener('click', () => {
+        d.visible = false; if (selectedId === id) selectedId = ''; savePlant(id); makeBoard(); render();
+      });
+      card.querySelectorAll('input').forEach((input) => {
+        input.addEventListener('input', () => {
+          const v = Number(input.value); if (!Number.isFinite(v)) return;
+          d[input.dataset.k] = clamp(v, Number(input.min), Number(input.max));
+          savePlant(id); render(); syncAll();
+        });
+      });
+    }
+    syncBoard();
+  }
+
+  function syncBoard() {
+    const list = document.getElementById('boardList');
+    for (const card of list.children) {
+      const id = card.dataset.id, d = data.get(id);
+      card.classList.toggle('active', id === selectedId);
+      if (id === selectedId) card.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      card.querySelectorAll('input[type=range]').forEach((r) => {
+        const k = r.dataset.k; r.value = Math.round(d[k]);
+      });
+      card.querySelectorAll('input[type=number]').forEach((n) => {
+        const k = n.dataset.k; n.value = Math.round(d[k]);
+      });
+      const eye = card.querySelector('.eye');
+      eye.classList.toggle('off', d.hidden);
+      card.querySelector('.delta').textContent =
+        `中心 (${Math.round(d.x)}, ${Math.round(d.y)}) · 尺寸 ${Math.round(d.size)}`;
+    }
+    document.getElementById('boardTitle').textContent = `已上版（${visiblePlants().length} 株）`;
+    document.getElementById('libCount').textContent = `${visiblePlants().length}/38`;
+  }
+
+  function syncAll() {
+    syncBoard();
+    const grid = document.getElementById('libGrid');
+    for (const cell of grid.children) {
+      cell.classList.toggle('on', data.get(cell.dataset.id)?.visible);
+      cell.classList.toggle('active', cell.dataset.id === selectedId);
+    }
+    const hint = document.getElementById('coordHint');
+    const sel = selectedId ? data.get(selectedId) : null;
+    hint.textContent = sel ? `x:${Math.round(sel.x)} y:${Math.round(sel.y)} 大小:${Math.round(sel.size)} 旋转:${Math.round(sel.rotate)}°` : 'x:— y:—';
+  }
+
+  // ---- canvas pointer ----
+  canvas.addEventListener('pointerdown', (e) => {
+    const id = hitTest(canvasPoint(e));
+    if (!id) return;
+    select(id); dragging = true;
+    canvas.classList.add('dragging');
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging || !selectedId) return;
+    const pt = canvasPoint(e), d = data.get(selectedId);
+    d.x = clamp(Math.round(pt.x), 0, CANVAS);
+    d.y = clamp(Math.round(pt.y), 0, CANVAS);
+    savePlant(selectedId); render(); syncAll();
+  });
+  canvas.addEventListener('pointerup', () => { dragging = false; canvas.classList.remove('dragging'); });
+  canvas.addEventListener('pointercancel', () => { dragging = false; canvas.classList.remove('dragging'); });
+
+  // keyboard nudge
+  window.addEventListener('keydown', (e) => {
+    if (!selectedId) return;
+    const d = data.get(selectedId);
+    const step = e.shiftKey ? 10 : 1;
+    const arrows = { ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0] };
+    if (!arrows[e.key]) return;
+    e.preventDefault();
+    d.x = clamp(d.x + arrows[e.key][0] * step, 0, CANVAS);
+    d.y = clamp(d.y + arrows[e.key][1] * step, 0, CANVAS);
+    savePlant(selectedId); render(); syncAll();
+  });
+
+  // ---- data export / import ----
+  function exportData() {
+    return {
+      version: 1,
+      unit: 'canvas-px, 1000x1000, rotation clockwise-degrees',
+      bottle: { size: BOTTLE_SIZE },
+      plants: visiblePlants().map((id) => {
+        const p = PLANTS.find((q) => q.id === id), d = data.get(id);
+        return { id, name: p.name, size: round(d.size), x: round(d.x), y: round(d.y), rotate: round(d.rotate), hidden: !!d.hidden };
+      }),
+    };
+  }
+
+  document.getElementById('copyData').addEventListener('click', async () => {
+    const text = JSON.stringify(exportData(), null, 2);
+    try { await navigator.clipboard.writeText(text); showToast('JSON 已复制'); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+      ta.select(); const ok = document.execCommand('copy'); ta.remove();
+      showToast(ok ? 'JSON 已复制' : '复制失败，请用「下载 JSON」');
+    }
+  });
+  document.getElementById('downloadData').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(exportData(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = 'botanical-plants-layout.json'; a.click(); URL.revokeObjectURL(url);
+  });
+  document.getElementById('loadFile').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    try {
+      const j = JSON.parse(await file.text());
+      if (!Array.isArray(j.plants)) throw new Error('缺少 plants 数组');
+      for (const r of j.plants) {
+        const d = data.get(String(r.id)); if (!d) continue;
+        if (Number.isFinite(r.size)) d.size = clamp(r.size, 60, 400);
+        if (Number.isFinite(r.x)) d.x = clamp(r.x, 0, CANVAS);
+        if (Number.isFinite(r.y)) d.y = clamp(r.y, 0, CANVAS);
+        if (Number.isFinite(r.rotate)) d.rotate = clamp(r.rotate, -180, 180);
+        d.visible = true; d.hidden = !!r.hidden; savePlant(String(r.id));
+      }
+      syncAll(); makeBoard(); render(); showToast('参数已载入');
+    } catch (err) { showToast('载入失败：' + err.message); }
+    finally { e.target.value = ''; }
+  });
+  document.getElementById('clear').addEventListener('click', () => {
+    for (const d of data.values()) { d.visible = false; }
+    for (const id of data.keys()) savePlant(id);
+    selectedId = ''; makeBoard(); render(); showToast('版面已清空（数据仍在，可从植物库重新加入）');
+  });
+  document.getElementById('downloadPng').addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      if (!blob) { showToast('导出失败'); return; }
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = 'botanical-collage.png'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000); showToast('PNG 已导出');
+    }, 'image/png');
+  });
+
+  // ---- boot ----
+  restoreOrInit();
+  makeLib();
+  makeBoard();
+  loadAll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>竹叶清茶香水拼贴 · Worn-In</title>
+<style>
+  :root{color-scheme:dark;--bg:#181510;--panel:#211c16;--card:#29231c;--line:#42372a;--gold:#d8b274;--muted:#a89c8a;--text:#f2eadc}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;height:100vh;overflow:hidden}
+  button,input{font:inherit}
+  .app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 390px}
+  .workspace{min-width:0;display:flex;flex-direction:column;padding:20px 24px 18px;gap:12px}
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+  h1{font-size:20px;margin:0 0 3px;font-weight:650;letter-spacing:.02em}
+  .subtitle{color:var(--muted);font-size:12px}
+  .mode{color:#d7c6a9;border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:11px;white-space:nowrap}
+  .stage-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  canvas{display:block;width:min(100%,calc(100vh - 120px));height:auto;max-height:100%;aspect-ratio:1;background:#f8f5ef;box-shadow:0 18px 60px #0008;touch-action:none}
+  .stage-foot{display:flex;justify-content:space-between;gap:12px;color:#8f8475;font-size:11px}
+  .panel{background:var(--panel);border-left:1px solid #342b21;padding:18px 16px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+  .panel-head{display:flex;justify-content:space-between;align-items:center}
+  .panel h2{font-size:15px;margin:0;font-weight:650}
+  .save-state{font-size:10px;color:#8eaa7a}
+  .intro{padding:10px 11px;background:#282219;border:1px solid #393023;border-radius:9px;color:#b9ad9b;font-size:11px;line-height:1.55}
+  .plant-list{display:flex;flex-direction:column;gap:8px}
+  .plant-card{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 10px 10px}
+  .plant-card.active{border-color:#b9955d;box-shadow:0 0 0 1px #b9955d33}
+  .plant-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .select-plant{border:0;background:none;color:var(--text);padding:0;text-align:left;cursor:pointer;font-weight:650}
+  .plant-meta{font-size:10px;color:var(--muted);white-space:nowrap}
+  .control{display:grid;grid-template-columns:48px minmax(0,1fr) 64px;gap:7px;align-items:center;margin-top:5px}
+  .control label{font-size:11px;color:#c5b9a7}
+  input[type=range]{width:100%;accent-color:var(--gold);height:18px}
+  input[type=number]{width:64px;background:#17130f;color:var(--text);border:1px solid #514332;border-radius:6px;padding:4px 5px;text-align:right;font-size:11px}
+  .delta{font-size:9px;color:#91836f;text-align:right;margin-top:1px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:2px}
+  .actions button,.file-button{border:1px solid #584831;background:#30271d;color:#e5d4b5;border-radius:8px;padding:8px 9px;cursor:pointer;font-size:11px}
+  .actions button:hover,.file-button:hover{border-color:var(--gold);background:#3a3023}
+  .actions .primary{grid-column:span 2;background:#c9a565;color:#21190f;border-color:#c9a565;font-weight:700}
+  .file-button{display:block;text-align:center}
+  #loadFile{display:none}
+  .formula{font-size:10px;color:#847968;line-height:1.5;padding-top:3px}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#332a20;border:1px solid #695536;color:#f0dfc0;border-radius:8px;padding:8px 13px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+  @media(min-width:621px) and (max-width:760px){
+    .app{grid-template-columns:minmax(0,1fr) minmax(330px,1fr)}
+    .workspace{padding:14px 12px 12px;gap:8px}
+    .topbar{align-items:flex-start;flex-direction:column;gap:4px}
+    .mode{white-space:normal}
+    .panel{padding:14px 12px;gap:10px}
+  }
+  @media(max-width:620px){
+    body{height:auto;min-height:100vh;overflow:auto}
+    .app{height:auto;min-height:100vh;grid-template-columns:1fr}
+    .workspace{min-height:70vh;padding:14px}
+    canvas{width:min(100%,calc(100vw - 28px));max-height:none}
+    .panel{border-left:0;border-top:1px solid #342b21;overflow:visible}
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="workspace">
+    <header class="topbar">
+      <div>
+        <h1>竹叶清茶香水拼贴</h1>
+        <div class="subtitle">随机抽取 5 株 · 切线式环绕 · 距离与旋转可微调</div>
+      </div>
+      <span class="mode">配方：竹叶、柑橘 · 铃兰、白茶 · 苔藓、橡木</span>
+    </header>
+    <div class="stage-wrap"><canvas id="canvas" width="1000" height="1000" aria-label="植物围绕香水瓶的布局预览"></canvas></div>
+    <footer class="stage-foot"><span>拖植物沿半径方向可调距离；角度位置保持均匀。</span><span>数据自动保存在本机浏览器</span></footer>
+  </section>
+  <aside class="panel">
+    <div class="panel-head"><h2>逐株微调</h2><span class="save-state" id="saveState">已自动保存</span></div>
+    <div class="intro">从竹叶、柑橘、铃兰、白茶、苔藓、橡木中随机抽取了五株（本次未抽中苔藓）。距离沿用上一版认可的环绕节奏；角度按切线方向计算，再加不超过 6° 的轻微随机变化。黄色虚线框表示当前选中项。</div>
+    <div class="plant-list" id="plantList"></div>
+    <div class="actions">
+      <button id="downloadPng" class="primary">导出拼贴 PNG</button>
+      <button id="copyData">复制当前参数</button>
+      <button id="downloadData">下载 JSON</button>
+      <label class="file-button" for="loadFile">载入 JSON</label>
+      <input id="loadFile" type="file" accept="application/json,.json">
+      <button id="reset">恢复初始布局</button>
+    </div>
+    <div class="formula">角度正值 = 顺时针。环绕距离固定为 177–208 px，不额外随机；旋转以切线角为基准，当前每株的轻微扰动可在下方查看和调整。</div>
+  </aside>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const STORE_KEY = 'wornin-botanical-recipe-layout-v1';
+  const CENTER = 500;
+  const BASE_SIZE = 166;
+  const BOTTLE_SIZE = 270;
+  const plants = [
+    {id:'30', name:'铃兰', file:'../assets/botanicals/recipe/30_lily-of-the-valley.png', axis:11, bearing:0, radius:177, jitter:5},
+    {id:'31', name:'橡木', file:'../assets/botanicals/recipe/31_oak.png', axis:59, bearing:72, radius:177, jitter:3},
+    {id:'29', name:'竹叶', file:'../assets/botanicals/recipe/29_bamboo-leaves.png', axis:9, bearing:144, radius:208, jitter:-2},
+    {id:'01', name:'柑橘', file:'../assets/botanicals/recipe/01_citrus.png', axis:-85, bearing:216, radius:190, jitter:-3},
+    {id:'09', name:'白茶', file:'../assets/botanicals/recipe/09_white-tea.png', axis:0, bearing:288, radius:174, jitter:2},
+  ];
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const bottle = new Image();
+  const images = new Map();
+  let selectedId = '';
+  let dragging = false;
+  let toastTimer;
+
+  const wrap180 = (angle) => {
+    let value = ((angle % 180) + 180) % 180;
+    if (value > 90) value -= 180;
+    return value;
+  };
+  const initialRotate = (plant) => wrap180(plant.bearing + 90 - plant.axis);
+  const state = plants.map((plant) => ({
+    ...plant,
+    baseRadius: plant.radius,
+    radius: plant.radius,
+    baseRotate: initialRotate(plant),
+    initialRotate: initialRotate(plant) + plant.jitter,
+    rotate: initialRotate(plant) + plant.jitter,
+  }));
+  const find = (id) => state.find((item) => item.id === id);
+
+  function showToast(message) {
+    const el = document.getElementById('toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state.map(({id,radius,rotate}) => ({id,radius,rotate}))));
+      document.getElementById('saveState').textContent = '已自动保存';
+    } catch (error) {
+      document.getElementById('saveState').textContent = '无法保存';
+      console.error('保存植物布局失败', error);
+    }
+  }
+
+  function exportData() {
+    return {
+      version: 1,
+      mode: 'tangent',
+      angleConvention: 'clockwise-positive-degrees',
+      distanceUnit: 'canvas-px-from-center',
+      items: state.map((item) => ({
+        id: item.id,
+        name: item.name,
+        bearing: round(item.bearing),
+        baseRadius: item.baseRadius,
+        radius: round(item.radius),
+        radiusDelta: round(item.radius - item.baseRadius),
+        baseRotate: round(item.baseRotate),
+        rotate: round(item.rotate),
+        rotateDelta: round(item.rotate - item.baseRotate),
+      })),
+    };
+  }
+
+  function round(value) {
+    return Math.round(value * 10) / 10;
+  }
+
+  function persistAndDraw() {
+    save();
+    render();
+    syncControls();
+  }
+
+  function makeControls() {
+    const list = document.getElementById('plantList');
+    list.innerHTML = '';
+    for (const plant of state) {
+      const card = document.createElement('section');
+      card.className = 'plant-card';
+      card.dataset.id = plant.id;
+      card.innerHTML = `
+        <div class="plant-head">
+          <button type="button" class="select-plant">${plant.id} · ${plant.name}</button>
+          <span class="plant-meta">方位 ${plant.bearing}°</span>
+        </div>
+        <div class="control">
+          <label for="distance-${plant.id}">距离</label>
+          <input id="distance-${plant.id}" data-key="radius" type="range" min="150" max="340" step="1">
+          <input data-key="radius" type="number" min="150" max="340" step="1" aria-label="${plant.name}离中心距离">
+        </div>
+        <div class="control">
+          <label for="rotation-${plant.id}">旋转</label>
+          <input id="rotation-${plant.id}" data-key="rotate" type="range" min="-180" max="180" step="1">
+          <input data-key="rotate" type="number" min="-180" max="180" step="1" aria-label="${plant.name}旋转角度">
+        </div>
+        <div class="delta" data-delta="${plant.id}"></div>`;
+      list.appendChild(card);
+      card.querySelector('.select-plant').addEventListener('click', () => select(plant.id));
+      card.querySelectorAll('input').forEach((input) => {
+        input.addEventListener('input', () => {
+          const item = find(plant.id);
+          const next = Number(input.value);
+          if (!Number.isFinite(next)) return;
+          item[input.dataset.key] = Math.max(Number(input.min), Math.min(Number(input.max), next));
+          persistAndDraw();
+        });
+      });
+    }
+    syncControls();
+  }
+
+  function syncControls() {
+    for (const item of state) {
+      const card = document.querySelector(`.plant-card[data-id="${item.id}"]`);
+      if (!card) continue;
+      card.classList.toggle('active', item.id === selectedId);
+      card.querySelectorAll('[data-key="radius"]').forEach((input) => { input.value = Math.round(item.radius); });
+      card.querySelectorAll('[data-key="rotate"]').forEach((input) => { input.value = Math.round(item.rotate); });
+      const dr = Math.round(item.radius - item.baseRadius);
+      const da = Math.round(item.rotate - item.baseRotate);
+      card.querySelector(`[data-delta="${item.id}"]`).textContent =
+        `相对初始：距离 ${dr >= 0 ? '+' : ''}${dr}px · 角度 ${da >= 0 ? '+' : ''}${da}°`;
+    }
+  }
+
+  function select(id) {
+    selectedId = id;
+    syncControls();
+    render();
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = img.naturalWidth;
+        offscreen.height = img.naturalHeight;
+        const offctx = offscreen.getContext('2d', {willReadFrequently:true});
+        offctx.drawImage(img, 0, 0);
+        const pixels = offctx.getImageData(0, 0, offscreen.width, offscreen.height).data;
+        let minX = offscreen.width, minY = offscreen.height, maxX = -1, maxY = -1;
+        for (let y = 0; y < offscreen.height; y++) {
+          for (let x = 0; x < offscreen.width; x++) {
+            if (pixels[(y * offscreen.width + x) * 4 + 3] > 24) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX < minX || maxY < minY) {
+          reject(new Error(`图片没有可见内容：${src}`));
+          return;
+        }
+        resolve({img, crop:{x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1}});
+      };
+      img.onerror = () => reject(new Error(`图片加载失败：${src}`));
+      img.src = src;
+    });
+  }
+
+  async function loadAllImages() {
+    const status = document.getElementById('saveState');
+    status.textContent = '正在载入图片…';
+    try {
+      const loaded = await Promise.all(state.map((plant) => loadImage(plant.file)));
+      loaded.forEach((value, i) => images.set(state[i].id, value));
+      await new Promise((resolve, reject) => {
+        bottle.onload = resolve;
+        bottle.onerror = () => reject(new Error('新香水瓶图片加载失败'));
+        bottle.src = '../assets/botanicals/perfume-bottle.png';
+      });
+      restoreLocal();
+      status.textContent = '已自动保存';
+      render();
+    } catch (error) {
+      status.textContent = '图片載入失败';
+      showToast(error.message);
+      console.error(error);
+    }
+  }
+
+  function restoreLocal() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (!Array.isArray(saved)) return;
+      for (const record of saved) {
+        const item = find(record.id);
+        if (!item) continue;
+        if (Number.isFinite(record.radius)) item.radius = clamp(record.radius, 150, 340);
+        if (Number.isFinite(record.rotate)) item.rotate = clamp(record.rotate, -180, 180);
+      }
+      syncControls();
+    } catch (error) {
+      console.error('读取本机布局失败', error);
+      showToast('本机保存的数据无法读取，已用初始布局');
+    }
+  }
+
+  function clamp(value,min,max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function position(item) {
+    const rad = item.bearing * Math.PI / 180;
+    return {x:CENTER + item.radius * Math.sin(rad), y:CENTER - item.radius * Math.cos(rad)};
+  }
+
+  function drawPlant(item) {
+    const loaded = images.get(item.id);
+    if (!loaded) return;
+    const {img,crop} = loaded;
+    const scale = BASE_SIZE / Math.max(crop.w, crop.h);
+    const w = crop.w * scale, h = crop.h * scale;
+    const p = position(item);
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(item.rotate * Math.PI / 180);
+    ctx.drawImage(img,crop.x,crop.y,crop.w,crop.h,-w/2,-h/2,w,h);
+    if (item.id === selectedId) {
+      ctx.strokeStyle = '#b58d50';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6,5]);
+      ctx.strokeRect(-w/2-5,-h/2-5,w+10,h+10);
+    }
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#f8f5ef';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    state.forEach(drawPlant);
+    if (bottle.complete && bottle.naturalWidth) {
+      const scale = BOTTLE_SIZE / bottle.naturalWidth;
+      const w = bottle.naturalWidth * scale, h = bottle.naturalHeight * scale;
+      ctx.drawImage(bottle,CENTER-w/2,CENTER-h/2,w,h);
+    }
+  }
+
+  function canvasPoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {x:(event.clientX-rect.left)*canvas.width/rect.width,y:(event.clientY-rect.top)*canvas.height/rect.height};
+  }
+
+  function hitTest(point) {
+    for (let i=state.length-1;i>=0;i--) {
+      const item=state[i], loaded=images.get(item.id);
+      if (!loaded) continue;
+      const scale=BASE_SIZE/Math.max(loaded.crop.w,loaded.crop.h);
+      const w=loaded.crop.w*scale,h=loaded.crop.h*scale,p=position(item);
+      const dx=point.x-p.x,dy=point.y-p.y,rad=-item.rotate*Math.PI/180;
+      const lx=dx*Math.cos(rad)-dy*Math.sin(rad),ly=dx*Math.sin(rad)+dy*Math.cos(rad);
+      if (Math.abs(lx)<=w/2+8 && Math.abs(ly)<=h/2+8) return item;
+    }
+    return null;
+  }
+
+  canvas.addEventListener('pointerdown',(event) => {
+    const item=hitTest(canvasPoint(event));
+    if (!item) return;
+    select(item.id);
+    dragging=true;
+    canvas.setPointerCapture(event.pointerId);
+  });
+  canvas.addEventListener('pointermove',(event) => {
+    if (!dragging) return;
+    const item=find(selectedId),point=canvasPoint(event);
+    item.radius=clamp(Math.round(Math.hypot(point.x-CENTER,point.y-CENTER)),150,340);
+    persistAndDraw();
+  });
+  canvas.addEventListener('pointerup',()=>{dragging=false;});
+  canvas.addEventListener('pointercancel',()=>{dragging=false;});
+
+  document.getElementById('copyData').addEventListener('click', async () => {
+    const text=JSON.stringify(exportData(),null,2);
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('参数 JSON 已复制，可以直接粘贴给我');
+    } catch (error) {
+      const area=document.createElement('textarea');
+      area.value=text;
+      document.body.appendChild(area);
+      area.select();
+      const copied=document.execCommand('copy');
+      area.remove();
+      if (copied) showToast('参数 JSON 已复制，可以直接粘贴给我');
+      else showToast('复制失败，请改用“下载 JSON”');
+    }
+  });
+  document.getElementById('downloadData').addEventListener('click',() => {
+    const blob=new Blob([JSON.stringify(exportData(),null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download='botanical-recipe-layout.json';link.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById('loadFile').addEventListener('change',async(event) => {
+    const file=event.target.files?.[0];
+    if (!file) return;
+    try {
+      const data=JSON.parse(await file.text());
+      if (!Array.isArray(data.items)) throw new Error('JSON 中缺少 items 数组');
+      for (const record of data.items) {
+        const item=find(record.id);
+        if (!item) continue;
+        if (Number.isFinite(record.radius)) item.radius=clamp(record.radius,150,340);
+        if (Number.isFinite(record.rotate)) item.rotate=clamp(record.rotate,-180,180);
+      }
+      persistAndDraw();
+      showToast('参数已载入');
+    } catch (error) {
+      showToast(`载入失败：${error.message}`);
+    } finally {
+      event.target.value='';
+    }
+  });
+  document.getElementById('reset').addEventListener('click',() => {
+    for (const item of state) {
+      item.radius=item.baseRadius;
+      item.rotate=item.initialRotate;
+    }
+    persistAndDraw();
+    showToast('已恢复初始布局');
+  });
+
+  document.getElementById('downloadPng').addEventListener('click',() => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        showToast('PNG 导出失败，请重试');
+        return;
+      }
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download='bamboo-tea-botanical-collage.png';link.click();
+      setTimeout(() => URL.revokeObjectURL(url),1000);
+      showToast('拼贴 PNG 已导出');
+    },'image/png');
+  });
+
+  makeControls();
+  loadAllImages();
+})();
+</script>
+</body>
+</html>

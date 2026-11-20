@@ -1,0 +1,139 @@
+{
+  "seed": 20261114,
+  "fabric": "C:\\Users\\janic\\Downloads\\精油布料正方形图片\\精油布料正方形图片\\香草 + 香草奶色磨毛棉斜纹.jpg",
+  "tests": [
+    {
+      "garment": "Brown leather jacket",
+      "style": "wild",
+      "variant": "biker",
+      "recipe": [
+        "小豆蔻",
+        "柑橘",
+        "皮革",
+        "焚香",
+        "琥珀",
+        "烟草木",
+        "乳香"
+      ],
+      "selected_ingredients": [
+        {
+          "name": "小豆蔻",
+          "source": "02_小豆蔻.png",
+          "role": "small",
+          "orientation": "free",
+          "bearing": 0,
+          "radius": 218,
+          "size": 110,
+          "rotation": -51.3
+        },
+        {
+          "name": "柑橘",
+          "source": "01_柑橘.png",
+          "role": "small",
+          "orientation": "free",
+          "bearing": 72,
+          "radius": 224,
+          "size": 110,
+          "rotation": -66.8
+        },
+        {
+          "name": "琥珀",
+          "source": "07_琥珀.png",
+          "role": "medium",
+          "orientation": "horizontal",
+          "bearing": 144,
+          "radius": 180,
+          "size": 160,
+          "rotation": -6.7
+        },
+        {
+          "name": "焚香",
+          "source": "05_焚香.png",
+          "role": "medium",
+          "orientation": "free",
+          "bearing": 216,
+          "radius": 192,
+          "size": 160,
+          "rotation": 69.4
+        },
+        {
+          "name": "皮革",
+          "source": "03_皮革.png",
+          "role": "large",
+          "orientation": "free",
+          "bearing": 288,
+          "radius": 202,
+          "size": 190,
+          "rotation": 9.8
+        }
+      ],
+      "output": "test_wild_biker_leather_jacket.png"
+    },
+    {
+      "garment": "Olive linen dress",
+      "style": "natural/home",
+      "variant": "after rain",
+      "recipe": [
+        "竹叶",
+        "柑橘",
+        "铃兰",
+        "白茶",
+        "苔藓",
+        "橡木"
+      ],
+      "selected_ingredients": [
+        {
+          "name": "橡木",
+          "source": "31_橡木.png",
+          "role": "medium",
+          "orientation": "horizontal",
+          "bearing": 0,
+          "radius": 184,
+          "size": 160,
+          "rotation": -32.4
+        },
+        {
+          "name": "柑橘",
+          "source": "01_柑橘.png",
+          "role": "small",
+          "orientation": "free",
+          "bearing": 72,
+          "radius": 224,
+          "size": 110,
+          "rotation": -69.3
+        },
+        {
+          "name": "竹叶",
+          "source": "29_竹叶.png",
+          "role": "large",
+          "orientation": "vertical",
+          "bearing": 144,
+          "radius": 204,
+          "size": 190,
+          "rotation": 6.6
+        },
+        {
+          "name": "苔藓",
+          "source": "32_苔藓.png",
+          "role": "large",
+          "orientation": "horizontal",
+          "bearing": 216,
+          "radius": 216,
+          "size": 190,
+          "rotation": -3.9
+        },
+        {
+          "name": "铃兰",
+          "source": "30_铃兰.png",
+          "role": "large",
+          "orientation": "vertical",
+          "bearing": 288,
+          "radius": 202,
+          "size": 190,
+          "rotation": 16.2
+        }
+      ],
+      "output": "test_natural_after_rain_linen_dress.png"
+    }
+  ]
+}

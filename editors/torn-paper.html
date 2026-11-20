@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9e1d3">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>撕纸调香 · Worn-In</title>
+  <link rel="stylesheet" href="torn-paper.css?v=7">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <a class="brand" href="index.html" aria-label="返回 Worn-In">
+        <span class="brand-mark">W</span>
+        <span>WORN-IN <small>SCENT STUDIO</small></span>
+      </a>
+      <div class="page-title">
+        <span class="eyebrow">PAPER SCENT STUDIO · 01</span>
+        <h1>撕纸调香</h1>
+      </div>
+      <div class="progress"><span class="progress-dot active">1</span><i></i><span class="progress-dot">2</span><i></i><span class="progress-dot">3</span></div>
+    </header>
+
+    <div class="workspace">
+      <section class="studio">
+        <div class="studio-heading">
+          <div>
+            <p class="eyebrow">YOUR LITTLE WORKTABLE</p>
+            <h2>布置你的工作台</h2>
+          </div>
+          <div class="studio-actions">
+            <button id="editorToggle" class="button button-light" type="button" aria-expanded="true">布局编辑器 · 已打开</button>
+            <button id="arrangeToggle" class="button button-dark" type="button">完成摆放 →</button>
+          </div>
+        </div>
+        <div class="stage-viewport" aria-label="固定尺寸工作台，可横向滚动查看">
+          <div id="stage" class="stage layout-mode" aria-label="可以拖动背景、窗框、桌面柜和台灯的固定尺寸编辑画布">
+            <div id="backgroundPiece" class="scene-layer background-piece" data-draggable-layer="background">
+              <img class="piece-art" src="../assets/torn-paper/objects/background.webp" alt="手绘棕黄色背景" draggable="false">
+            </div>
+
+            <div id="windowPiece" class="piece window-piece" data-piece="window" data-draggable-layer="window">
+              <div id="paperWindow" class="paper-window" aria-label="窗框内的撕纸拼贴区域">
+                <div class="window-boundary"></div>
+              </div>
+              <img class="piece-art" src="../assets/torn-paper/objects/window.png" alt="木质窗框" draggable="false">
+            </div>
+
+            <div id="cabinetPiece" class="piece cabinet-piece" data-piece="cabinet" data-draggable-layer="cabinet">
+              <div id="cabinetCards" class="cabinet-card-layer" data-layer="cards" aria-hidden="true"></div>
+              <img class="piece-art cabinet-art" src="../assets/torn-paper/objects/cabinet.png" alt="带有九个空格的手绘桌面柜" draggable="false">
+              <div id="cabinetTabs" class="cabinet-tabs" role="group" aria-label="按色系切换柜中香料">
+                <button class="cabinet-tab active" type="button" data-group="0" aria-pressed="true" aria-label="切换到红橙棕色组，色卡 01 至 09">
+                  <span>红橙棕</span><small>01–09</small>
+                </button>
+                <button class="cabinet-tab" type="button" data-group="1" aria-pressed="false" aria-label="切换到金黄褐色组，色卡 10 至 18">
+                  <span>金黄褐</span><small>10–18</small>
+                </button>
+                <button class="cabinet-tab" type="button" data-group="2" aria-pressed="false" aria-label="切换到黄绿草木色组，色卡 19 至 27">
+                  <span>黄绿草</span><small>19–27</small>
+                </button>
+                <button class="cabinet-tab" type="button" data-group="3" aria-pressed="false" aria-label="切换到蓝紫粉色组，色卡 28 至 36">
+                  <span>蓝紫粉</span><small>28–36</small>
+                </button>
+              </div>
+              <div id="cabinetGrid" class="cabinet-grid" aria-label="桌面柜里的九张色卡"></div>
+            </div>
+
+            <div id="lampPiece" class="piece lamp-piece" data-piece="lamp" data-draggable-layer="lamp">
+              <img class="piece-art" src="../assets/torn-paper/objects/lamp.png" alt="台灯" draggable="false">
+            </div>
+
+            <div id="selectionOutline" class="selection-outline" data-label="背景" aria-hidden="true"></div>
+            <div class="stage-caption"><span class="tiny-sun">✳</span> DRAG · PLACE · STRETCH BACKGROUND</div>
+            <div class="stage-note"><span class="note-pin">✦</span> 色卡藏在柜子九个空格后面</div>
+          </div>
+        </div>
+        <section id="layoutEditor" class="layout-editor" aria-label="素材位置和尺寸编辑器">
+          <div class="editor-heading">
+            <div>
+              <p class="eyebrow">SCENE LAYOUT · AUTO-SAVE</p>
+              <h3>素材布局编辑器</h3>
+            </div>
+            <span id="saveStatus" class="save-status" role="status">已自动保存</span>
+          </div>
+          <div class="editor-toolbar">
+            <label for="editLayer">正在调整</label>
+            <select id="editLayer">
+              <option value="background">背景（最底层）</option>
+              <option value="window">窗框</option>
+              <option value="cabinet">桌面柜</option>
+              <option value="cards">柜中颜料卡</option>
+              <option value="lamp">台灯（最上层）</option>
+            </select>
+            <button id="resetLayout" class="text-button" type="button">恢复默认布局</button>
+          </div>
+          <div class="editor-controls">
+            <label class="editor-control" for="layerX">
+              <span>横向位置 <output id="layerXValue">0%</output></span>
+              <input id="layerX" data-property="x" type="range" min="-100" max="100" step="0.5">
+            </label>
+            <label class="editor-control" for="layerY">
+              <span>纵向位置 <output id="layerYValue">0%</output></span>
+              <input id="layerY" data-property="y" type="range" min="-100" max="100" step="0.5">
+            </label>
+            <label class="editor-control" for="layerW">
+              <span><span id="layerWLabel">宽度 / 等比缩放</span> <output id="layerWValue">100%</output></span>
+              <input id="layerW" data-property="w" type="range" min="2" max="220" step="0.5">
+            </label>
+            <label class="editor-control" for="layerH">
+              <span>高度（锁定比例） <output id="layerHValue">100%</output></span>
+              <input id="layerH" data-property="h" type="range" min="2" max="220" step="0.5">
+            </label>
+          </div>
+          <p class="editor-help">位置滑块可移动素材；宽度 / 等比缩放可调整素材大小并保持原比例，高度自动匹配。背景可单独横向拉伸，窄屏可横向滚动查看。</p>
+        </section>
+        <div class="studio-footer">
+          <span id="placementStatus">拖动素材，或用编辑器精准调整位置和大小</span>
+          <span>背景 → 窗框 → 柜中卡片 → 柜子 → 台灯</span>
+        </div>
+      </section>
+
+      <aside class="palette">
+        <div class="palette-heading">
+          <div>
+            <p class="eyebrow">COLOR &amp; MEMORY</p>
+            <h2>从柜子里选一张</h2>
+          </div>
+          <span class="count-pill">9 格</span>
+        </div>
+        <p class="palette-intro">点选任一色卡，让它浮到中央；确认后，就把它贴进窗框。</p>
+        <button id="replaceToggle" class="replace-button" type="button" aria-pressed="false">＋ 更换柜中卡片</button>
+        <p id="replaceHint" class="replace-hint" aria-live="polite"></p>
+        <div class="collection-heading">
+          <h3>全部色卡 · 色阶排列</h3>
+          <span id="collectionCount">载入中…</span>
+        </div>
+        <div id="collection" class="collection" aria-label="全部色卡"></div>
+        <div id="assetNotice" class="asset-notice" role="status"></div>
+        <div class="palette-foot">窗框是你的画布 · 色卡可以在框内拖动</div>
+      </aside>
+    </div>
+    <footer class="page-foot">WORN-IN · OLD CLOTHES, NEW SCENT</footer>
+  </main>
+
+  <div id="cardModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button id="modalBackdrop" class="modal-backdrop" type="button" aria-label="关闭预览"></button>
+    <div class="modal-card">
+      <p class="eyebrow">A LITTLE PIECE OF COLOR</p>
+      <h2 id="modalTitle">色卡预览</h2>
+      <div class="preview-paper"><img id="previewImage" alt="选中的撕纸色卡"></div>
+      <p id="previewCaption" class="preview-caption"></p>
+      <div class="modal-actions">
+        <button id="cancelPreview" class="button button-light" type="button">再看看</button>
+        <button id="confirmCard" class="button button-confirm" type="button"><span>👉</span> 确认放进窗框</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="torn-paper.js?v=7"></script>
+</body>
+</html>
